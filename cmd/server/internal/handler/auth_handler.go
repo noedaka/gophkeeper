@@ -1,0 +1,74 @@
+package handler
+
+import (
+	"context"
+	"gophkeeper/internal/domain"
+	"gophkeeper/internal/proto"
+	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var JWTSecret = []byte("my-super-secret-key-for-testing")
+
+func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*proto.RegisterResponse, error) {
+	user := &domain.UserCredentials{
+		Login:    r.GetLogin(),
+		Password: r.GetPassword(),
+	}
+
+	//TODO Валидация ошибок
+	userID, err := h.UserService.Register(ctx, user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot register user: %v", err)
+	}
+
+	//TODO Выделить создание токена в отдельную функцию + структуру
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	tokenString, err := token.SignedString(JWTSecret)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
+
+	}
+
+	response := &proto.RegisterResponse{}
+	response.SetToken(tokenString)
+
+	return response, nil
+}
+
+func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.AuthResponse, error) {
+	user := &domain.UserCredentials{
+		Login:    r.GetLogin(),
+		Password: r.GetPassword(),
+	}
+
+	//TODO Валидация ошибок
+	userID, err := h.UserService.Login(ctx, user)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "cannot login user: %v", err)
+	}
+
+	//TODO Выделить создание токена в отдельную функцию + структуру
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	tokenString, err := token.SignedString(JWTSecret)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
+
+	}
+
+	response := &proto.AuthResponse{}
+	response.SetToken(tokenString)
+
+	return response, nil
+}
