@@ -3,6 +3,7 @@ module gophkeeper
 go 1.25.3
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0

@@ -1,0 +1,44 @@
+edition = "2023";
+
+package storage.gophkeeper;
+
+option go_package = "gophkeeper/internal/proto";
+
+message Card {
+  string card_number = 1;
+  string cvv = 2;
+  string card_holder = 3;
+  string expiry_date = 4; 
+  string metadata = 5;     
+}
+
+message Credentials {
+  string username = 1;   
+  string password = 2; 
+  string service_name = 3;
+  string metadata = 4; 
+}
+
+message RecordID {
+  int32 id = 1;
+}
+
+message RecordList {
+  repeated RecordID records = 1;
+}
+
+message Empty {}
+
+service SecureStorage {
+  // Card methods
+  rpc StoreCard(Card) returns (RecordID) {}
+  rpc GetCard(RecordID) returns (Card) {}
+  rpc ListCards(Empty) returns (RecordList) {}
+  rpc DeleteCard(RecordID) returns (Empty) {}
+
+  // login/password methods
+  rpc StoreCredentials(Credentials) returns (RecordID) {}
+  rpc GetCredentials(RecordID) returns (Credentials) {}
+  rpc ListCredentials(Empty) returns (RecordList) {}
+  rpc DeleteCredentials(RecordID) returns (Empty) {}
+}

@@ -37,10 +37,11 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 
 	}
 
-	response := &proto.RegisterResponse{}
-	response.SetToken(tokenString)
+	response := proto.RegisterResponse_builder{
+		Token: &tokenString,
+	}
 
-	return response, nil
+	return response.Build(), nil
 }
 
 func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.AuthResponse, error) {
@@ -67,8 +68,9 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 
 	}
 
-	response := &proto.AuthResponse{}
-	response.SetToken(tokenString)
+	response := proto.AuthResponse_builder{
+		Token: &tokenString,
+	}
 
-	return response, nil
+	return response.Build(), nil
 }

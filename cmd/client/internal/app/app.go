@@ -5,6 +5,7 @@ import (
 
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models"
+	"gophkeeper/internal/config"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -17,9 +18,14 @@ type App struct {
 
 // NewApp создаёт новое приложение
 func NewApp() *App {
+	cfg, err := config.Init()
+	if err != nil {
+		log.Printf("Ошибка парсинга переменных: %v", err)
+	}
+
 	// Подключаемся к серверу
 	// TODO: Вынести адрес сервера в конфигурацию
-	grpcClient, err := grpcclient.NewGophKeeperClient(":3200")
+	grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress)
 	if err != nil {
 		log.Printf("Ошибка подключения к серверу: %v", err)
 		log.Println("Запуск в offline режиме...")
@@ -29,7 +35,7 @@ func NewApp() *App {
 	// Начинаем с экрана аутентификации
 	authModel := models.NewAuthModel(grpcClient)
 
-	return &App{
+	return &App{	
 		grpcClient: grpcClient,
 		model:      authModel,
 	}
