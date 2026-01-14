@@ -2,9 +2,8 @@ package models
 
 import (
 	"fmt"
-
+	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/styles"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -15,21 +14,23 @@ type MainModel struct {
 	token     string
 	userID    string
 	login     string
+	grpcClient *grpcclient.GophKeeperClient
 	menuItems []string
 	cursor    int
 }
 
 // NewMainModel создаёт главную модель
-func NewMainModel(token, userID, login string) MainModel {
+func NewMainModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) MainModel {
 	return MainModel{
 		BaseModel: NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		grpcClient: grpcClient, 
 		menuItems: []string{
-			"Мои пароли",
-			"Текстовые данные",
+			"Логины/Пароли",
 			"Банковские карты",
+			"Текстовые данные",
 			"Бинарные данные",
 			"Настройки",
 			"Выйти",
@@ -51,37 +52,39 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			m.Cancel()
 			return m, tea.Quit
-
 		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-
 		case "down", "j":
 			if m.cursor < len(m.menuItems)-1 {
 				m.cursor++
 			}
-
 		case "enter", " ":
 			switch m.cursor {
+			case 0: // Логины/Пароли
+				credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
+				return credsMenuModel, credsMenuModel.Init()
+			case 1: // Банковские карты
+				cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient)
+				return cardMenuModel, cardMenuModel.Init()
+			case 2: // Текстовые данные
+				m.SetError("Раздел 'Текстовые данные' в разработке")
+			case 3: // Бинарные данные
+				m.SetError("Раздел 'Бинарные данные' в разработке")
+			case 4: // Настройки
+				m.SetError("Раздел 'Настройки' в разработке")
 			case 5: // Выйти
 				// Возвращаемся к экрану авторизации
-				// TODO: Сделать Logout запрос к серверу
-				authModel := NewAuthModel(nil) // Здесь нужно передать реального клиента
+				authModel := NewAuthModel(m.grpcClient)
 				return authModel, authModel.Init()
-			default:
-				// Пока просто показываем заглушку
-				m.SetError(fmt.Sprintf("Раздел '%s' в разработке", m.menuItems[m.cursor]))
 			}
-
 		case "esc":
 			m.ClearError()
 		}
-
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	}
-
 	return m, nil
 }
 
@@ -95,7 +98,7 @@ func (m MainModel) View() string {
 	title := styles.TitleStyle.Render("GophKeeper")
 	welcome := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
-		Render(fmt.Sprintf("Вы вошли как: %s (ID: %s)", m.login, m.userID))
+		Render(fmt.Sprintf("Вы вошли как: %s", m.login))
 
 	// Меню
 	var menuItems []string
@@ -111,11 +114,10 @@ func (m MainModel) View() string {
 				lipgloss.NewStyle().
 					Padding(0, 3).
 					Width(30).
-					Render("  "+item),
+					Render(" "+item),
 			)
 		}
 	}
-
 	menu := lipgloss.JoinVertical(lipgloss.Left, menuItems...)
 	menu = lipgloss.NewStyle().MarginTop(2).Render(menu)
 
@@ -123,12 +125,6 @@ func (m MainModel) View() string {
 	status := lipgloss.NewStyle().
 		Foreground(styles.SuccessColor).
 		Render("✓ Аутентифицирован")
-
-	// Токен (скрытый)
-	tokenPreview := lipgloss.NewStyle().
-		Foreground(styles.SecondaryColor).
-		Faint(true).
-		Render(fmt.Sprintf("Токен: %s...", m.token[:min(10, len(m.token))]))
 
 	// Сборка интерфейса
 	content := lipgloss.JoinVertical(lipgloss.Center,
@@ -138,20 +134,10 @@ func (m MainModel) View() string {
 		menu,
 		"",
 		status,
-		"",
-		tokenPreview,
 		m.RenderError(),
 		"",
 		styles.HelpStyle.Render("↑/↓: навигация • Enter: выбрать • Esc: сброс"),
 	)
 
 	return m.Center(content)
-}
-
-// Вспомогательная функция для безопасного получения подстроки
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

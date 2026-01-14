@@ -12,14 +12,18 @@ import (
 )
 
 type GRPCServer struct {
-	service service.UserService
-	cfg     config.Config
+	userService service.UserService
+	cardService service.CardService
+	credService service.CredsService
+	cfg         config.Config
 }
 
-func NewGRPCServer(service service.UserService, cfg config.Config) *GRPCServer {
+func NewGRPCServer(userService service.UserService, cardService service.CardService, credService service.CredsService, cfg config.Config) *GRPCServer {
 	return &GRPCServer{
-		service: service,
-		cfg:     cfg,
+		userService: userService,
+		cardService: cardService,
+		credService: credService,
+		cfg:         cfg,
 	}
 }
 
@@ -33,9 +37,10 @@ func (s *GRPCServer) StartServer() error {
 		grpc.UnaryInterceptor(interceptor.AuthInterceptor),
 	)
 
-	handler := handler.NewHandler(s.service)
+	handler := handler.NewHandler(s.userService, s.cardService, s.credService)
 
 	proto.RegisterAuthServiceServer(grpcServer, handler)
+	proto.RegisterSecureStorageServer(grpcServer, handler)
 
 	//TODO Graceful shutdown
 	if err := grpcServer.Serve(listen); err != nil {

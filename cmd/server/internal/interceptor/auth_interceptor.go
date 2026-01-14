@@ -16,9 +16,9 @@ var JWTSecret = []byte("my-super-secret-key-for-testing")
 // AuthInterceptor перехватчик для проверки JWT-токенов
 func AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	excludedMethods := map[string]bool{
-		"/proto.AuthService/RegisterUser": true,
-		"/proto.AuthService/AuthUser":     true,
-	}
+        "/auth.gophkeeper.AuthService/RegisterUser": true,
+        "/auth.gophkeeper.AuthService/AuthUser":     true,
+    }
 
 	if excludedMethods[info.FullMethod] {
 		return handler(ctx, req)

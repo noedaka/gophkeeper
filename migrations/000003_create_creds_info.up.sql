@@ -4,5 +4,5 @@ CREATE TABLE creds (
     password VARCHAR(256) NOT NULL,
     service_name VARCHAR(128) NOT NULL,
     metadata VARCHAR(64),
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );

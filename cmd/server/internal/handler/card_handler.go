@@ -21,6 +21,7 @@ func (h *Handler) StoreCard(ctx context.Context, r *proto.Card) (*proto.RecordID
 		ExpiryDate:     r.GetExpiryDate(),
 		CVV:            r.GetCvv(),
 		Metadata:       r.GetMetadata(),
+		
 	}
 	card.UserID = userID
 
@@ -59,7 +60,7 @@ func (h *Handler) GetCard(ctx context.Context, r *proto.RecordID) (*proto.Card, 
 	return response.Build(), nil
 }
 
-func (h *Handler) ListCards(ctx context.Context) (*proto.RecordList, error) {
+func (h *Handler) ListCards(ctx context.Context, _ *proto.Empty) (*proto.RecordList, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
@@ -85,18 +86,18 @@ func (h *Handler) ListCards(ctx context.Context) (*proto.RecordList, error) {
 	return response.Build(), nil
 }
 
-func (h *Handler) DeleteCard(ctx context.Context, r *proto.RecordID) error {
+func (h *Handler) DeleteCard(ctx context.Context, r *proto.RecordID) (*proto.Empty, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Unauthenticated, "unauthenticated")
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
 	err := h.CardService.Delete(ctx, int(r.GetId()), userID)
 	if err != nil {
-		return status.Errorf(codes.Internal, "cannot delete card: %v", err)
+		return nil, status.Errorf(codes.Internal, "cannot delete card: %v", err)
 	}
 
-	return nil
+	return nil, nil
 }
 
 const UserIDKey ContextKey = "user_id"

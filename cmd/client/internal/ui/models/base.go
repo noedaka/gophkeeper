@@ -46,16 +46,6 @@ func (m *BaseModel) ClearError() {
 	m.Error = ""
 }
 
-// SetLoading устанавливает состояние загрузки
-func (m *BaseModel) SetLoading(loading bool, text ...string) {
-	m.Loading = loading
-	if len(text) > 0 {
-		m.LoadingText = text[0]
-	} else {
-		m.LoadingText = "Загрузка..."
-	}
-}
-
 // RenderError отображает ошибку, если есть
 func (m *BaseModel) RenderError() string {
 	if m.Error == "" {

@@ -13,8 +13,8 @@ type CredsRepo struct {
 	db *sql.DB
 }
 
-func NewCredsRepo(db *sql.DB) *UserRepo {
-	return &UserRepo{db: db}
+func NewCredsRepo(db *sql.DB) *CredsRepo {
+	return &CredsRepo{db: db}
 }
 
 func (r *CredsRepo) Create(ctx context.Context, creds *domain.Creds) (int, error) {

@@ -108,11 +108,11 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AuthErrorMsg:
 		m.SetError(msg.Error)
-		m.SetLoading(false)
+		//m.SetLoading(false)
 
 	case AuthSuccessMsg:
 		// Переход к главному экрану
-		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login)
+		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login, m.grpcClient)
 		return mainModel, mainModel.Init()
 	}
 
@@ -137,9 +137,6 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View отображает интерфейс
 func (m AuthModel) View() string {
-	if m.Width == 0 || m.Height == 0 {
-		return "Загрузка..."
-	}
 
 	// Заголовок
 	title := styles.TitleStyle.Render("GophKeeper")
@@ -368,7 +365,7 @@ func (m AuthModel) login() tea.Cmd {
 		}
 	}
 
-	m.SetLoading(true, "Выполняется вход...")
+	//m.SetLoading(true, "Выполняется вход...")
 
 	// Асинхронный вызов gRPC
 	return func() tea.Msg {
@@ -416,7 +413,7 @@ func (m AuthModel) register() tea.Cmd {
 		}
 	}
 
-	m.SetLoading(true, "Регистрация...")
+	//m.SetLoading(true, "Регистрация...")
 
 	// Асинхронный вызов gRPC
 	return func() tea.Msg {

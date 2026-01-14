@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
 	"time"
@@ -27,7 +28,7 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 
 	//TODO Выделить создание токена в отдельную функцию + структуру
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
+		"user_id": fmt.Sprintf("%v", userID),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
@@ -58,12 +59,12 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 
 	//TODO Выделить создание токена в отдельную функцию + структуру
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": userID,
+		"user_id": fmt.Sprintf("%v", userID),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	tokenString, err := token.SignedString(JWTSecret)
-	if err != nil {
+	if err != nil {	
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 
 	}

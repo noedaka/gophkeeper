@@ -57,7 +57,7 @@ func (h *Handler) GetCredentials(ctx context.Context, r *proto.RecordID) (*proto
 	return response.Build(), nil
 }
 
-func (h *Handler) ListCredentials(ctx context.Context) (*proto.RecordList, error) {
+func (h *Handler) ListCredentials(ctx context.Context, _ *proto.Empty) (*proto.RecordList, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
 		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
@@ -83,16 +83,16 @@ func (h *Handler) ListCredentials(ctx context.Context) (*proto.RecordList, error
 	return response.Build(), nil
 }
 
-func (h *Handler) DeleteCredentials(ctx context.Context, r *proto.RecordID) error {
+func (h *Handler) DeleteCredentials(ctx context.Context, r *proto.RecordID) (*proto.Empty, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Unauthenticated, "unauthenticated")
+		return nil, status.Errorf(codes.Unauthenticated, "unauthenticated")
 	}
 
 	err := h.CredsService.Delete(ctx, int(r.GetId()), userID)
 	if err != nil {
-		return status.Errorf(codes.Internal, "cannot delete cred: %v", err)
+		return nil, status.Errorf(codes.Internal, "cannot delete cred: %v", err)
 	}
 
-	return nil
+	return nil, nil
 }

@@ -13,14 +13,14 @@ type CardRepo struct {
 	db *sql.DB
 }
 
-func NewCardRepo(db *sql.DB) *UserRepo {
-	return &UserRepo{db: db}
+func NewCardRepo(db *sql.DB) *CardRepo {
+	return &CardRepo{db: db}
 }
 
-func (r *CardRepo) Create(ctx context.Context, card *domain.Card) error {
+func (r *CardRepo) Create(ctx context.Context, card *domain.Card) (int, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	defer func() {
@@ -38,14 +38,14 @@ func (r *CardRepo) Create(ctx context.Context, card *domain.Card) error {
 		card.CardNumber, card.CardHolderName, card.ExpiryDate, card.CVV, card.Metadata, card.UserID,
 	).Scan(&ID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return ID, nil
 }
 
 func (r *CardRepo) Get(ctx context.Context, cardID int, userID int) (*domain.Card, error) {
@@ -53,7 +53,7 @@ func (r *CardRepo) Get(ctx context.Context, cardID int, userID int) (*domain.Car
 	err := r.db.QueryRowContext(ctx,
 		`SELECT card_number, card_holder_name, expiry_date, cvv, metadata, user_id
         FROM cards WHERE id = $1`, cardID,
-	).Scan(&card.CardNumber, &card.CardHolderName, &card.ExpiryDate, &card.CVV, &card.UserID)
+	).Scan(&card.CardNumber, &card.CardHolderName, &card.ExpiryDate, &card.CVV, &card.Metadata, &card.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, model.ErrNoContent

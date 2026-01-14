@@ -5,5 +5,5 @@ CREATE TABLE cards (
     expiry_date VARCHAR(128) NOT NULL,
 	cvv VARCHAR(3) NOT NULL,
     metadata VARCHAR(64),
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );
