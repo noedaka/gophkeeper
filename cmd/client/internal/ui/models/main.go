@@ -66,14 +66,15 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
 				return credsMenuModel, credsMenuModel.Init()
-			case 1: 
+			case 1:
 				cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient)
 				return cardMenuModel, cardMenuModel.Init()
-			case 2: 
-				m.SetError("Раздел 'Текстовые данные' в разработке")
-			case 3: 
+			case 2:
+				textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient)
+				return textMenuModel, textMenuModel.Init()
+			case 3:
 				m.SetError("Раздел 'Бинарные данные' в разработке")
-			case 4: 
+			case 4:
 				authModel := NewAuthModel(m.grpcClient)
 				return authModel, authModel.Init()
 			}
