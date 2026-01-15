@@ -18,35 +18,29 @@ type App struct {
 
 // NewApp создаёт новое приложение
 func NewApp() *App {
-    cfg, err := config.Init()
-    if err != nil {
-        log.Printf("Ошибка парсинга переменных: %v", err)
-    }
+	cfg, err := config.Init()
+	if err != nil {
+		log.Printf("Ошибка парсинга переменных: %v", err)
+	}
 
-    // Подключаемся к серверу
-    grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress)
-    if err != nil {
-        log.Printf("Ошибка подключения к серверу: %v", err)
-        log.Println("Запуск в offline режиме...")
-        // Можно продолжить с nil клиентом для тестирования UI
-    }
+	// Подключаемся к серверу
+	grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress)
+	if err != nil {
+		log.Printf("Ошибка подключения к серверу: %v", err)
+		log.Println("Запуск в offline режиме...")
+		// Можно продолжить с nil клиентом для тестирования UI
+	}
 
-    // Начинаем с экрана аутентификации
-    authModel := models.NewAuthModel(grpcClient)
-    return &App{
-        grpcClient: grpcClient,
-        model: authModel,
-    }
+	// Начинаем с экрана аутентификации
+	authModel := models.NewAuthModel(grpcClient)
+	return &App{
+		grpcClient: grpcClient,
+		model:      authModel,
+	}
 }
 
 // Start запускает приложение
 func (a *App) Start() error {
-	defer func() {
-		if a.grpcClient != nil {
-			a.grpcClient.Close()
-		}
-	}()
-
 	p := tea.NewProgram(a.model,
 		tea.WithAltScreen(),       // Полноэкранный режим
 		tea.WithMouseCellMotion(), // Поддержка мыши

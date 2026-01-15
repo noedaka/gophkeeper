@@ -60,7 +60,6 @@ func (m *BaseModel) RenderLoading() string {
 		return ""
 	}
 
-	// Простой спиннер (анимация)
 	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	frame := frames[int(time.Now().UnixNano()/int64(time.Millisecond))%len(frames)]
 

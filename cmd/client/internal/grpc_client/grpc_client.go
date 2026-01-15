@@ -17,7 +17,7 @@ type GophKeeperClient struct {
 	authClient    pb.AuthServiceClient
 	storageClient pb.SecureStorageClient
 	token         string
-	mu            sync.RWMutex // для безопасного доступа к токену
+	mu            sync.RWMutex
 }
 
 // NewGophKeeperClient создаёт нового клиента
@@ -99,131 +99,58 @@ func (c *GophKeeperClient) Login(ctx context.Context, login, password string) (s
 	return token, nil
 }
 
-// StoreCard сохраняет новую карту
-func (c *GophKeeperClient) StoreCard(ctx context.Context, card *pb.Card) (int32, error) {
-	// Используем токен из клиента
+func (c *GophKeeperClient) StoreRecord(ctx context.Context, record *pb.EncryptedRecord) (int32, error) {
 	token := c.GetToken()
 	if token == "" {
 		return 0, fmt.Errorf("токен аутентификации не установлен")
 	}
-
-	// Создаем контекст с токеном
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	resp, err := c.storageClient.StoreCard(ctx, card)
+
+	resp, err := c.storageClient.StoreRecord(ctx, record)
 	if err != nil {
 		return 0, err
 	}
 	return resp.GetId(), nil
 }
 
-// GetCard получает карту по ID
-func (c *GophKeeperClient) GetCard(ctx context.Context, cardID int32) (*pb.Card, error) {
+func (c *GophKeeperClient) GetRecord(ctx context.Context, recordID int32) (*pb.EncryptedRecord, error) {
 	token := c.GetToken()
 	if token == "" {
 		return nil, fmt.Errorf("токен аутентификации не установлен")
 	}
 
-	var req pb.RecordID
-	req.SetId(cardID)
-
+	req := &pb.RecordID_builder{Id: &recordID}
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	return c.storageClient.GetCard(ctx, &req)
+
+	return c.storageClient.GetRecord(ctx, req.Build())
 }
 
-// ListCards получает список ID карт пользователя
-func (c *GophKeeperClient) ListCards(ctx context.Context) ([]int32, error) {
+func (c *GophKeeperClient) ListRecords(ctx context.Context, recordType string) ([]*pb.RecordInfo, error) {
 	token := c.GetToken()
 	if token == "" {
 		return nil, fmt.Errorf("токен аутентификации не установлен")
 	}
-
-	var empty pb.Empty
+	req := &pb.ListRequest_builder{RecordType: &recordType}
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	resp, err := c.storageClient.ListCards(ctx, &empty)
+
+	resp, err := c.storageClient.ListRecords(ctx, req.Build())
 	if err != nil {
 		return nil, err
 	}
-
-	var ids []int32
-	for _, record := range resp.GetRecords() {
-		ids = append(ids, record.GetId())
-	}
-	return ids, nil
+	return resp.GetRecords(), nil
 }
 
-// DeleteCard удаляет карту
-func (c *GophKeeperClient) DeleteCard(ctx context.Context, cardID int32) error {
+func (c *GophKeeperClient) DeleteRecord(ctx context.Context, recordID int32) error {
 	token := c.GetToken()
 	if token == "" {
 		return fmt.Errorf("токен аутентификации не установлен")
 	}
 
-	var req pb.RecordID
-	req.SetId(cardID)
+	req := &pb.RecordID_builder{Id: &recordID}
 
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	_, err := c.storageClient.DeleteCard(ctx, &req)
-	return err
-}
 
-// Close закрывает соединение
-func (c *GophKeeperClient) Close() error {
-	if c.conn != nil {
-		return c.conn.Close()
-	}
-	return nil
-}
+	_, err := c.storageClient.DeleteRecord(ctx, req.Build())
 
-func (c *GophKeeperClient) StoreCredentials(ctx context.Context, creds *pb.Credentials) (int32, error) {
-	token := c.GetToken()
-	if token == "" {
-		return 0, fmt.Errorf("токен аутентификации не установлен")
-	}
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	resp, err := c.storageClient.StoreCredentials(ctx, creds)
-	if err != nil {
-		return 0, err
-	}
-	return resp.GetId(), nil
-}
-
-func (c *GophKeeperClient) GetCredentials(ctx context.Context, credsID int32) (*pb.Credentials, error) {
-	token := c.GetToken()
-	if token == "" {
-		return nil, fmt.Errorf("токен аутентификации не установлен")
-	}
-	var req pb.RecordID
-	req.SetId(credsID)
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	return c.storageClient.GetCredentials(ctx, &req)
-}
-
-func (c *GophKeeperClient) ListCredentials(ctx context.Context) ([]int32, error) {
-	token := c.GetToken()
-	if token == "" {
-		return nil, fmt.Errorf("токен аутентификации не установлен")
-	}
-	var empty pb.Empty
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	resp, err := c.storageClient.ListCredentials(ctx, &empty)
-	if err != nil {
-		return nil, err
-	}
-	var ids []int32
-	for _, record := range resp.GetRecords() {
-		ids = append(ids, record.GetId())
-	}
-	return ids, nil
-}
-
-func (c *GophKeeperClient) DeleteCredentials(ctx context.Context, credsID int32) error {
-	token := c.GetToken()
-	if token == "" {
-		return fmt.Errorf("токен аутентификации не установлен")
-	}
-	var req pb.RecordID
-	req.SetId(credsID)
-	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
-	_, err := c.storageClient.DeleteCredentials(ctx, &req)
 	return err
 }

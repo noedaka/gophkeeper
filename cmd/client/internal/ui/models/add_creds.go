@@ -1,5 +1,3 @@
-// add_creds.go (новый файл, копия AddCardModel с адаптацией)
-
 package models
 
 import (
@@ -8,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
 	"gophkeeper/cmd/client/internal/ui/styles"
@@ -31,7 +30,7 @@ type AddCredsModel struct {
 	service  components.InputField
 	metadata components.InputField
 
-	cursorPos int // 0-3 поля, 4 кнопка
+	cursorPos int 
 	submitBtn string
 }
 
@@ -102,7 +101,6 @@ func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetError(msg.Error)
 	}
 
-	// Обновляем все поля
 	var cmd tea.Cmd
 	m.username, cmd = m.username.Update(msg)
 	cmds = append(cmds, cmd)
@@ -207,24 +205,39 @@ func (m AddCredsModel) submit() tea.Cmd {
 		}
 	}
 
-	domainCreds := domain.Creds{
+	plainCreds := &domain.Creds{
 		Login:       m.username.Model.Value(),
 		Password:    m.password.Model.Value(),
 		ServiceName: m.service.Model.Value(),
 		Metadata:    m.metadata.Model.Value(),
 	}
 
-	creds := &proto.Credentials_builder{
-		Username:    &domainCreds.Login,
-		Password:    &domainCreds.Password,
-		ServiceName: &domainCreds.ServiceName,
-		Metadata:    &domainCreds.Metadata,
+	plainBytes, err := plainCreds.MarshalPlain()
+	if err != nil {
+		return func() tea.Msg {
+			return CredsAddErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+		}
+	}
+
+	encrypted, nonce, err := crypto.Encrypt(plainBytes)
+	if err != nil {
+		return func() tea.Msg {
+			return CredsAddErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+		}
+	}
+
+	credsName := "creds"
+	rec := proto.EncryptedRecord_builder{
+		Ciphertext: encrypted,
+		Nonce:      nonce,
+		Metadata:   &plainCreds.Metadata,
+		RecordType: &credsName,
 	}
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		credID, err := m.grpcClient.StoreCredentials(ctx, creds.Build())
+		credID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
 		if err != nil {
 			return CredsAddErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
 		}

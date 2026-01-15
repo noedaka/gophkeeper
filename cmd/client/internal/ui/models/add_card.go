@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
 	"gophkeeper/cmd/client/internal/ui/styles"
@@ -64,12 +65,10 @@ func NewAddCardModel(token, userID, login string, grpcClient *grpcclient.GophKee
 		submitBtn: "Сохранить карту",
 	}
 
-	// Специальные ограничения
-	m.cardNumber.Model.CharLimit = 19 // 16 цифр + 3 пробела
-	m.expiryDate.Model.CharLimit = 5  // ММ/ГГ
+	m.cardNumber.Model.CharLimit = 19
+	m.expiryDate.Model.CharLimit = 5
 	m.cvv.Model.CharLimit = 3
 
-	// Фокус на первом поле
 	m.cardNumber, _ = m.cardNumber.Focus()
 
 	return m
@@ -98,10 +97,9 @@ func (m AddCardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.moveCursor(true)
 
 		case "enter":
-			if m.cursorPos == 5 { // кнопка
+			if m.cursorPos == 5 {
 				return m, m.submit()
 			}
-			// иначе просто переходим дальше
 			m = m.moveCursor(false)
 
 		case "esc":
@@ -121,7 +119,6 @@ func (m AddCardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetError(msg.Error)
 	}
 
-	// Обновляем ВСЕ поля ввода (как в AuthModel — это гарантирует работу ввода и фокуса)
 	var cmd tea.Cmd
 	m.cardNumber, cmd = m.cardNumber.Update(msg)
 	cmds = append(cmds, cmd)
@@ -134,7 +131,6 @@ func (m AddCardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.metadata, cmd = m.metadata.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// Автоформатирование в реальном времени (после обновления полей)
 	m.formatCardNumberLive()
 	m.formatExpiryDateLive()
 
@@ -184,13 +180,12 @@ func (m AddCardModel) renderField(label string, fieldView string, index int) str
 
 // moveCursor перемещает фокус между полями и кнопкой
 func (m AddCardModel) moveCursor(backward bool) AddCardModel {
-	// Снимаем фокус со всех полей
 	m = m.blurAll()
 
 	if backward {
 		m.cursorPos--
 		if m.cursorPos < 0 {
-			m.cursorPos = 5 // на кнопку
+			m.cursorPos = 5 
 		}
 	} else {
 		m.cursorPos++
@@ -199,7 +194,6 @@ func (m AddCardModel) moveCursor(backward bool) AddCardModel {
 		}
 	}
 
-	// Фокус на новое поле (если не кнопка)
 	if m.cursorPos < 5 {
 		switch m.cursorPos {
 		case 0:
@@ -215,7 +209,6 @@ func (m AddCardModel) moveCursor(backward bool) AddCardModel {
 		}
 	}
 
-	// Подсветка кнопки
 	if m.cursorPos == 5 {
 		m.submitBtn = "-> Сохранить карту"
 	} else {
@@ -235,7 +228,6 @@ func (m AddCardModel) blurAll() AddCardModel {
 	return m
 }
 
-// submit отправляет данные карты на сервер
 func (m AddCardModel) submit() tea.Cmd {
 	if err := m.validate(); err != nil {
 		return func() tea.Msg {
@@ -243,7 +235,7 @@ func (m AddCardModel) submit() tea.Cmd {
 		}
 	}
 
-	domainCard := domain.Card{
+	plainCard := &domain.Card{
 		CardNumber:     m.formatCardNumber(m.cardNumber.Model.Value()),
 		CardHolderName: m.cardHolder.Model.Value(),
 		ExpiryDate:     m.expiryDate.Model.Value(),
@@ -251,18 +243,32 @@ func (m AddCardModel) submit() tea.Cmd {
 		Metadata:       m.metadata.Model.Value(),
 	}
 
-	card := &proto.Card_builder{
-		CardNumber: &domainCard.CardNumber,
-		CardHolder: &domainCard.CardHolderName,
-		ExpiryDate: &domainCard.ExpiryDate,
-		Cvv:        &domainCard.CVV,
-		Metadata:   &domainCard.Metadata,
+	plainBytes, err := plainCard.MarshalPlain()
+	if err != nil {
+		return func() tea.Msg {
+			return CardAddErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+		}
+	}
+
+	encrypted, nonce, err := crypto.Encrypt(plainBytes)
+	if err != nil {
+		return func() tea.Msg {
+			return CardAddErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+		}
+	}
+
+	cardName := "card"
+	rec := proto.EncryptedRecord_builder{
+		Ciphertext: encrypted,
+		Nonce:      nonce,
+		Metadata:   &plainCard.Metadata,
+		RecordType: &cardName,
 	}
 
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		cardID, err := m.grpcClient.StoreCard(ctx, card.Build())
+		cardID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
 		if err != nil {
 			return CardAddErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
 		}

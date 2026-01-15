@@ -19,14 +19,13 @@ type CardListModel struct {
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
-	
-	cardIDs    []int32
-	cursor     int
-	loading    bool
-	errorMsg   string
+
+	cardIDs  []int32
+	cursor   int
+	loading  bool
+	errorMsg string
 }
 
-// Сообщения
 type (
 	CardsLoadedMsg struct {
 		CardIDs []int32
@@ -51,7 +50,7 @@ func NewCardListModel(token, userID, login string, grpcClient *grpcclient.GophKe
 		cursor:     0,
 		loading:    true,
 	}
-	
+
 	return m
 }
 
@@ -67,7 +66,7 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.loading {
 			return m, nil
 		}
-		
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			m.Cancel()
@@ -87,7 +86,6 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return cardDetailModel, cardDetailModel.Init()
 			}
 		case "r", "R":
-			// Обновить список
 			m.loading = true
 			m.errorMsg = ""
 			return m, m.loadCards
@@ -100,7 +98,6 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CardsLoadedMsg:
 		m.cardIDs = msg.CardIDs
 		m.loading = false
-		// Сортируем ID по возрастанию
 		sort.Slice(m.cardIDs, func(i, j int) bool {
 			return m.cardIDs[i] < m.cardIDs[j]
 		})
@@ -108,20 +105,19 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMsg = msg.Error
 		m.loading = false
 	}
-	
+
 	return m, nil
 }
 
 // View отображает интерфейс
 func (m CardListModel) View() string {
-	// Заголовок
 	title := styles.TitleStyle.Render("Список карт")
 	subtitle := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
 		Render(fmt.Sprintf("Найдено карт: %d", len(m.cardIDs)))
-	
+
 	var content string
-	
+
 	if m.loading {
 		content = lipgloss.JoinVertical(lipgloss.Center,
 			title,
@@ -147,7 +143,6 @@ func (m CardListModel) View() string {
 			styles.HelpStyle.Render("Esc: назад"),
 		)
 	} else {
-		// Список карт
 		var items []string
 		for i, cardID := range m.cardIDs {
 			item := fmt.Sprintf("Карта #%d", cardID)
@@ -166,10 +161,10 @@ func (m CardListModel) View() string {
 				)
 			}
 		}
-		
+
 		list := lipgloss.JoinVertical(lipgloss.Left, items...)
 		list = lipgloss.NewStyle().MarginTop(2).Render(list)
-		
+
 		content = lipgloss.JoinVertical(lipgloss.Center,
 			title,
 			subtitle,
@@ -179,7 +174,7 @@ func (m CardListModel) View() string {
 			styles.HelpStyle.Render("↑/↓: навигация • Enter: просмотр • R: обновить • Esc: назад"),
 		)
 	}
-	
+
 	return m.Center(content)
 }
 
@@ -192,15 +187,19 @@ func (m CardListModel) renderLoading() string {
 		Render(frame + " Загрузка списка карт...")
 }
 
-// loadCards загружает список карт с сервера
 func (m CardListModel) loadCards() tea.Msg {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
-	cardIDs, err := m.grpcClient.ListCards(ctx)
+
+	infos, err := m.grpcClient.ListRecords(ctx, "card")
 	if err != nil {
 		return CardsLoadErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
-	
-	return CardsLoadedMsg{CardIDs: cardIDs}
+
+	var ids []int32
+	for _, info := range infos {
+		ids = append(ids, info.GetId())
+	}
+
+	return CardsLoadedMsg{CardIDs: ids}
 }

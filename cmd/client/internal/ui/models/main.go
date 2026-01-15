@@ -4,6 +4,7 @@ import (
 	"fmt"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/styles"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -11,22 +12,22 @@ import (
 // MainModel - главный экран после успешной аутентификации
 type MainModel struct {
 	BaseModel
-	token     string
-	userID    string
-	login     string
+	token      string
+	userID     string
+	login      string
 	grpcClient *grpcclient.GophKeeperClient
-	menuItems []string
-	cursor    int
+	menuItems  []string
+	cursor     int
 }
 
 // NewMainModel создаёт главную модель
 func NewMainModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) MainModel {
 	return MainModel{
-		BaseModel: NewBaseModel(),
-		token:     token,
-		userID:    userID,
-		login:     login,
-		grpcClient: grpcClient, 
+		BaseModel:  NewBaseModel(),
+		token:      token,
+		userID:     userID,
+		login:      login,
+		grpcClient: grpcClient,
 		menuItems: []string{
 			"Логины/Пароли",
 			"Банковские карты",
@@ -62,20 +63,17 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter", " ":
 			switch m.cursor {
-			case 0: // Логины/Пароли
+			case 0:
 				credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
 				return credsMenuModel, credsMenuModel.Init()
-			case 1: // Банковские карты
+			case 1: 
 				cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient)
 				return cardMenuModel, cardMenuModel.Init()
-			case 2: // Текстовые данные
+			case 2: 
 				m.SetError("Раздел 'Текстовые данные' в разработке")
-			case 3: // Бинарные данные
+			case 3: 
 				m.SetError("Раздел 'Бинарные данные' в разработке")
-			case 4: // Настройки
-				m.SetError("Раздел 'Настройки' в разработке")
-			case 5: // Выйти
-				// Возвращаемся к экрану авторизации
+			case 4: 
 				authModel := NewAuthModel(m.grpcClient)
 				return authModel, authModel.Init()
 			}
@@ -94,13 +92,11 @@ func (m MainModel) View() string {
 		return "Загрузка..."
 	}
 
-	// Заголовок
 	title := styles.TitleStyle.Render("GophKeeper")
 	welcome := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
 		Render(fmt.Sprintf("Вы вошли как: %s", m.login))
 
-	// Меню
 	var menuItems []string
 	for i, item := range m.menuItems {
 		if i == m.cursor {
@@ -121,12 +117,10 @@ func (m MainModel) View() string {
 	menu := lipgloss.JoinVertical(lipgloss.Left, menuItems...)
 	menu = lipgloss.NewStyle().MarginTop(2).Render(menu)
 
-	// Статус
 	status := lipgloss.NewStyle().
 		Foreground(styles.SuccessColor).
 		Render("✓ Аутентифицирован")
 
-	// Сборка интерфейса
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		welcome,

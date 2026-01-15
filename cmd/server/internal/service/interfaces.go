@@ -10,16 +10,9 @@ type UserService interface {
 	Login(ctx context.Context, user *domain.UserCredentials) (int, error)
 }
 
-type CardService interface {
-	Create(ctx context.Context, card *domain.Card) (int, error)
-	Get(ctx context.Context, cardID int, userID int) (*domain.Card, error)
-	ListIDs(ctx context.Context, userID int) ([]int, error)
-	Delete(ctx context.Context, cardID int, userID int) error
-}
-
-type CredsService interface {
-	Create(ctx context.Context, creds *domain.Creds) (int, error)
-	Get(ctx context.Context, credsID int, userID int) (*domain.Creds, error)
-	ListIDs(ctx context.Context, userID int) ([]int, error)
-	Delete(ctx context.Context, credsID int, userID int) error
+type RecordService interface {
+	Create(ctx context.Context, record *domain.Record) (int, error)
+	Get(ctx context.Context, recordID int, userID int) (*domain.Record, error)
+	List(ctx context.Context, userID int, recordType string) ([]domain.RecordInfo, error)
+	Delete(ctx context.Context, recordID int, userID int) error
 }

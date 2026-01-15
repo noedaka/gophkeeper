@@ -1,0 +1,39 @@
+edition = "2023";
+
+package storage.gophkeeper;
+
+option go_package = "gophkeeper/internal/proto";
+
+message EncryptedRecord {
+  bytes ciphertext = 1;
+  bytes nonce = 2;
+  string metadata = 3;
+  string record_type = 4;
+}
+
+message RecordID {
+  int32 id = 1;
+}
+
+message ListRequest {
+  string record_type = 1;
+}
+
+message RecordInfo {
+  int32 id = 1;
+  string metadata = 2;
+  string record_type = 3;
+}
+
+message RecordList {
+  repeated RecordInfo records = 1;
+}
+
+message Empty {}
+
+service SecureStorage {
+  rpc StoreRecord(EncryptedRecord) returns (RecordID) {}
+  rpc GetRecord(RecordID) returns (EncryptedRecord) {}
+  rpc ListRecords(ListRequest) returns (RecordList) {}
+  rpc DeleteRecord(RecordID) returns (Empty) {}
+}

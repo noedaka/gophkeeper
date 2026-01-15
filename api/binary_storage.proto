@@ -1,0 +1,24 @@
+edition = "2023";
+
+package storage.gophkeeper;
+
+option go_package = "gophkeeper/internal/proto";
+
+message BinaryChunk {
+  bytes data = 1;
+  bytes nonce = 2;
+  int32 sequence = 3; 
+  string metadata = 4;
+  bool is_last = 5;
+}
+
+message BinaryRecordID {
+  int32 id = 1;
+}
+
+message Empty {}
+
+service BinaryStorage {
+  rpc UploadBinary(stream BinaryChunk) returns (BinaryRecordID) {}
+  rpc DownloadBinary(BinaryRecordID) returns (stream BinaryChunk) {}
+}

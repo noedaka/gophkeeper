@@ -64,7 +64,7 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 	})
 
 	tokenString, err := token.SignedString(JWTSecret)
-	if err != nil {	
+	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 
 	}

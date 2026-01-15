@@ -25,14 +25,12 @@ func main() {
 	defer db.Close()
 
 	userRepo := repository.NewUserRepo(db)
-	cardRepo := repository.NewCardRepo(db)
-	credRepo := repository.NewCredsRepo(db)
+	recordRepo := repository.NewRecordRepo(db)
 
 	userService := service.NewUserService(userRepo)
-	cardService := service.NewCardService(cardRepo)
-	credService := service.NewCredsService(credRepo)
+	recordService := service.NewRecordServ(recordRepo)
 
-	server := server.NewGRPCServer(userService, cardService, credService, *cfg)
+	server := server.NewGRPCServer(userService, recordService, *cfg)
 
 	//TODO Better logs
 	err = server.StartServer()

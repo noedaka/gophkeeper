@@ -28,7 +28,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Запуск приложения
 	gophkeeperApp := app.NewApp()
 
 	if err := gophkeeperApp.Start(); err != nil {

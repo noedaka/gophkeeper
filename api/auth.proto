@@ -4,11 +4,6 @@ package auth.gophkeeper;
 
 option go_package = "gophkeeper/internal/proto";
 
-service AuthService {
-  rpc RegisterUser (RegisterRequest) returns (RegisterResponse);
-  rpc AuthUser (AuthRequest) returns (AuthResponse);
-}
-
 message RegisterRequest {
   string login = 1;
   string password = 2;
@@ -25,4 +20,9 @@ message AuthRequest {
 
 message AuthResponse {
   string token = 1;
+}
+
+service AuthService {
+  rpc RegisterUser (RegisterRequest) returns (RegisterResponse);
+  rpc AuthUser (AuthRequest) returns (AuthResponse);
 }

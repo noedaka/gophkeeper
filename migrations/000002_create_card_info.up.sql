@@ -1,9 +1,0 @@
-CREATE TABLE cards (
-	id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-	card_number VARCHAR(128) NOT NULL UNIQUE,
-    card_holder_name VARCHAR(256) NOT NULL,
-    expiry_date VARCHAR(128) NOT NULL,
-	cvv VARCHAR(3) NOT NULL,
-    metadata VARCHAR(64),
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE
-);

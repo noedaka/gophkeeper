@@ -14,18 +14,17 @@ import (
 // AuthModel управляет экраном аутентификации
 type AuthModel struct {
 	BaseModel
-	grpcClient *grpcclient.GophKeeperClient // Добавляем gRPC клиент
-	activeTab  string                   // "login" или "register"
+	grpcClient *grpcclient.GophKeeperClient
+	activeTab  string
 	loginEmail components.InputField
 	loginPass  components.InputField
 	regEmail   components.InputField
 	regPass    components.InputField
 	regConfirm components.InputField
 	submitBtn  string
-	cursorPos  int // 0-2 для полей, 3 для кнопки
+	cursorPos  int 
 }
 
-// Сообщения
 type (
 	SwitchTabMsg   string
 	AuthSuccessMsg struct {
@@ -53,7 +52,6 @@ func NewAuthModel(grpcClient *grpcclient.GophKeeperClient) AuthModel {
 		cursorPos:  0,
 	}
 
-	// Начинаем с фокуса на первом поле
 	m.loginEmail, _ = m.loginEmail.Focus()
 
 	return m
@@ -76,11 +74,9 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "tab", "shift+tab":
-			// Переключение между полями
 			m = m.moveCursor(msg.String() == "shift+tab")
 
 		case "left", "right":
-			// Переключение между вкладками
 			if msg.String() == "left" || msg.String() == "right" {
 				if m.activeTab == "login" {
 					m.activeTab = "register"
@@ -91,11 +87,9 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
-			// Нажатие на кнопку отправки
 			return m, m.submit()
 
 		case "esc":
-			// Сброс фокуса
 			m = m.blurAll()
 		}
 
@@ -108,15 +102,13 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case AuthErrorMsg:
 		m.SetError(msg.Error)
-		//m.SetLoading(false)
 
 	case AuthSuccessMsg:
-		// Переход к главному экрану
 		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login, m.grpcClient)
 		return mainModel, mainModel.Init()
 	}
 
-	// Обновляем активные поля ввода
+
 	var cmd tea.Cmd
 	if m.activeTab == "login" {
 		m.loginEmail, cmd = m.loginEmail.Update(msg)
@@ -138,23 +130,20 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View отображает интерфейс
 func (m AuthModel) View() string {
 
-	// Заголовок
 	title := styles.TitleStyle.Render("GophKeeper")
 	subtitle := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
 		MarginBottom(2).
 		Render("Безопасное хранение паролей и данных")
 
-	// Статус подключения
 	status := ""
 	if m.grpcClient == nil {
 		status = lipgloss.NewStyle().
 			Foreground(styles.WarningColor).
 			MarginBottom(1).
-			Render("⚠️ Offline режим. Сервер недоступен")
+			Render("Сервер недоступен")
 	}
 
-	// Вкладки
 	loginTab := " Вход "
 	registerTab := " Регистрация "
 
@@ -168,7 +157,6 @@ func (m AuthModel) View() string {
 
 	tabs := lipgloss.JoinHorizontal(lipgloss.Center, loginTab, registerTab)
 
-	// Форма
 	var form string
 	if m.activeTab == "login" {
 		form = m.renderLoginForm()
@@ -176,10 +164,8 @@ func (m AuthModel) View() string {
 		form = m.renderRegisterForm()
 	}
 
-	// Кнопка отправки
 	submitBtn := styles.ButtonActiveStyle.Render(m.submitBtn)
 
-	// Сборка интерфейса
 	content := lipgloss.JoinVertical(lipgloss.Center,
 		title,
 		subtitle,
@@ -253,20 +239,17 @@ func (m AuthModel) renderRegisterForm() string {
 
 // moveCursor перемещает курсор между полями
 func (m AuthModel) moveCursor(backward bool) AuthModel {
-	// Снимаем фокус со всех полей
 	m = m.blurAll()
 
-	// Определяем количество полей в активной форме
 	fieldCount := 2
 	if m.activeTab == "register" {
 		fieldCount = 3
 	}
 
-	// Обновляем позицию курсора
 	if backward {
 		m.cursorPos--
 		if m.cursorPos < 0 {
-			m.cursorPos = fieldCount // Переход на кнопку
+			m.cursorPos = fieldCount 
 		}
 	} else {
 		m.cursorPos++
@@ -275,7 +258,6 @@ func (m AuthModel) moveCursor(backward bool) AuthModel {
 		}
 	}
 
-	// Устанавливаем фокус на соответствующее поле
 	if m.cursorPos < fieldCount {
 		switch {
 		case m.activeTab == "login" && m.cursorPos == 0:
@@ -291,7 +273,6 @@ func (m AuthModel) moveCursor(backward bool) AuthModel {
 		}
 	}
 
-	// Обновляем текст кнопки
 	if m.cursorPos == fieldCount {
 		if m.activeTab == "login" {
 			m.submitBtn = "Войти " + "->"
@@ -351,23 +332,18 @@ func (m AuthModel) login() tea.Cmd {
 	login := m.loginEmail.Model.Value()
 	password := m.loginPass.Model.Value()
 
-	// Валидация
 	if login == "" || password == "" {
 		return func() tea.Msg {
 			return AuthErrorMsg{Error: "Заполните все поля"}
 		}
 	}
 
-	// Проверка подключения
 	if m.grpcClient == nil {
 		return func() tea.Msg {
 			return AuthErrorMsg{Error: "Нет подключения к серверу"}
 		}
 	}
 
-	//m.SetLoading(true, "Выполняется вход...")
-
-	// Асинхронный вызов gRPC
 	return func() tea.Msg {
 		token, err := m.grpcClient.Login(m.Ctx, login, password)
 		if err != nil {
@@ -375,8 +351,8 @@ func (m AuthModel) login() tea.Cmd {
 		}
 
 		return AuthSuccessMsg{
-			Token:  token,
-			Login:  login,
+			Token: token,
+			Login: login,
 		}
 	}
 }
@@ -387,7 +363,6 @@ func (m AuthModel) register() tea.Cmd {
 	password := m.regPass.Model.Value()
 	confirm := m.regConfirm.Model.Value()
 
-	// Валидация
 	if login == "" || password == "" || confirm == "" {
 		return func() tea.Msg {
 			return AuthErrorMsg{Error: "Заполните все поля"}
@@ -406,16 +381,12 @@ func (m AuthModel) register() tea.Cmd {
 		}
 	}
 
-	// Проверка подключения
 	if m.grpcClient == nil {
 		return func() tea.Msg {
 			return AuthErrorMsg{Error: "Нет подключения к серверу"}
 		}
 	}
 
-	//m.SetLoading(true, "Регистрация...")
-
-	// Асинхронный вызов gRPC
 	return func() tea.Msg {
 		token, err := m.grpcClient.Register(m.Ctx, login, password)
 		if err != nil {
@@ -423,8 +394,8 @@ func (m AuthModel) register() tea.Cmd {
 		}
 
 		return AuthSuccessMsg{
-			Token:  token,
-			Login:  login,
+			Token: token,
+			Login: login,
 		}
 	}
 }
