@@ -3,6 +3,7 @@ package grpcclient
 import (
 	"context"
 	"fmt"
+	"gophkeeper/internal/proto"
 	pb "gophkeeper/internal/proto"
 	"sync"
 
@@ -16,6 +17,7 @@ type GophKeeperClient struct {
 	conn          *grpc.ClientConn
 	authClient    pb.AuthServiceClient
 	storageClient pb.SecureStorageClient
+	binaryClient  pb.BinaryStorageClient
 	token         string
 	mu            sync.RWMutex
 }
@@ -31,11 +33,13 @@ func NewGophKeeperClient(serverAddr string) (*GophKeeperClient, error) {
 
 	authClient := pb.NewAuthServiceClient(conn)
 	cardClient := pb.NewSecureStorageClient(conn)
+	binaryClient := pb.NewBinaryStorageClient(conn)
 
 	return &GophKeeperClient{
 		conn:          conn,
 		authClient:    authClient,
 		storageClient: cardClient,
+		binaryClient:  binaryClient,
 		token:         "",
 	}, nil
 }
@@ -151,6 +155,57 @@ func (c *GophKeeperClient) DeleteRecord(ctx context.Context, recordID int32) err
 	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
 
 	_, err := c.storageClient.DeleteRecord(ctx, req.Build())
+
+	return err
+}
+
+// Streaming upload
+func (c *GophKeeperClient) UploadBinary(ctx context.Context) (proto.BinaryStorage_UploadBinaryClient, error) {
+	token := c.GetToken()
+	if token == "" {
+		return nil, fmt.Errorf("токен не установлен")
+	}
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
+	return c.binaryClient.UploadBinary(ctx)
+}
+
+// Streaming download
+func (c *GophKeeperClient) DownloadBinary(ctx context.Context, recordID int32) (proto.BinaryStorage_DownloadBinaryClient, error) {
+	token := c.GetToken()
+	if token == "" {
+		return nil, fmt.Errorf("токен не установлен")
+	}
+	req := pb.BinaryRecordID_builder{Id: &recordID}.Build()
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
+	return c.binaryClient.DownloadBinary(ctx, req)
+}
+
+func (c *GophKeeperClient) ListBinaries(ctx context.Context) ([]*pb.BinaryRecordInfo, error) {
+	token := c.GetToken()
+	if token == "" {
+		return nil, fmt.Errorf("токен не установлен")
+	}
+
+	req := pb.BinaryEmpty_builder{}.Build()
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
+
+	resp, err := c.binaryClient.ListBinaries(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.GetRecords(), nil
+}
+
+func (c *GophKeeperClient) DeleteBinary(ctx context.Context, recordID int32) error {
+	token := c.GetToken()
+	if token == "" {
+		return fmt.Errorf("токен не установлен")
+	}
+
+	req := pb.BinaryRecordID_builder{Id: &recordID}.Build()
+	ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("authorization", "Bearer "+token))
+	_, err := c.binaryClient.DeleteBinary(ctx, req)
 
 	return err
 }

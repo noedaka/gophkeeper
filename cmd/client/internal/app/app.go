@@ -27,11 +27,8 @@ func NewApp() *App {
 	grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress)
 	if err != nil {
 		log.Printf("Ошибка подключения к серверу: %v", err)
-		log.Println("Запуск в offline режиме...")
-		// Можно продолжить с nil клиентом для тестирования UI
 	}
 
-	// Начинаем с экрана аутентификации
 	authModel := models.NewAuthModel(grpcClient)
 	return &App{
 		grpcClient: grpcClient,
@@ -42,9 +39,9 @@ func NewApp() *App {
 // Start запускает приложение
 func (a *App) Start() error {
 	p := tea.NewProgram(a.model,
-		tea.WithAltScreen(),       // Полноэкранный режим
-		tea.WithMouseCellMotion(), // Поддержка мыши
-		tea.WithFPS(60),           // Плавная анимация
+		tea.WithAltScreen(),   
+		tea.WithMouseCellMotion(), 
+		tea.WithFPS(60),           
 	)
 
 	// Запускаем TUI
@@ -57,5 +54,5 @@ func (a *App) Start() error {
 
 // VersionInfo возвращает информацию о версии
 func VersionInfo() string {
-	return "GophKeeper v1.0.0\nBuild: 2024.01.15"
+	return "GophKeeper v1.0.0\nBuild: 2026.01.20"
 }

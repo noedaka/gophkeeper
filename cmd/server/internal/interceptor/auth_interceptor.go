@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -13,8 +14,11 @@ import (
 
 var JWTSecret = []byte("my-super-secret-key-for-testing")
 
-// AuthInterceptor перехватчик для проверки JWT-токенов
-func AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+// typed key для безопасного хранения userID в context
+type UserIDKey struct{}
+
+// AuthUnaryInterceptor unary interceptor для авторизации при обычных запросах
+func AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	excludedMethods := map[string]bool{
 		"/auth.gophkeeper.AuthService/RegisterUser": true,
 		"/auth.gophkeeper.AuthService/AuthUser":     true,
@@ -24,29 +28,63 @@ func AuthInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, h
 		return handler(ctx, req)
 	}
 
+	userID, err := authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	newCtx := context.WithValue(ctx, UserIDKey{}, userID)
+	return handler(newCtx, req)
+}
+
+// AuthStreamInterceptor tream interceptor для авторизации при потоковых запросах
+func AuthStreamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	userID, err := authenticate(stream.Context())
+	if err != nil {
+		return err
+	}
+
+	newCtx := context.WithValue(stream.Context(), UserIDKey{}, userID)
+
+	wrappedStream := &authServerStream{
+		ServerStream: stream,
+		ctx:          newCtx,
+	}
+
+	return handler(srv, wrappedStream)
+}
+
+type authServerStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *authServerStream) Context() context.Context {
+	return s.ctx
+}
+
+func authenticate(ctx context.Context) (int, error) {
 	tokenString, err := extractTokenFromContext(ctx)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
+		return 0, status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
 	}
 
 	claims, err := validateJWT(tokenString)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+		return 0, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
 
-	userID, ok := claims["user_id"].(string)
-	if !ok || userID == "" {
-		return nil, status.Errorf(codes.Unauthenticated, "token missing user_id claim")
+	userIDStr, ok := claims["user_id"].(string)
+	if !ok || userIDStr == "" {
+		return 0, status.Errorf(codes.Unauthenticated, "token missing user_id claim")
 	}
 
-	ctx = context.WithValue(ctx, "userID", userID)
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil || userID == 0 {
+		return 0, status.Errorf(codes.Unauthenticated, "invalid user_id in token")
+	}
 
-	md, _ := metadata.FromIncomingContext(ctx)
-	md = md.Copy()
-	md.Set("user_id", userID)
-	ctx = metadata.NewIncomingContext(ctx, md)
-
-	return handler(ctx, req)
+	return userID, nil
 }
 
 // extractTokenFromContext извлекает токен из заголовка Authorization

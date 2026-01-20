@@ -2,50 +2,39 @@ package handler
 
 import (
 	"context"
+	"gophkeeper/cmd/server/internal/interceptor"
 	"gophkeeper/cmd/server/internal/service"
+	"gophkeeper/internal/config"
 	"gophkeeper/internal/proto"
-	"strconv"
-
-	"google.golang.org/grpc/metadata"
 )
 
 type Handler struct {
 	proto.UnimplementedAuthServiceServer
 	proto.UnimplementedSecureStorageServer
+	proto.UnimplementedBinaryStorageServer
 
 	UserService   service.UserService
 	RecordService service.RecordService
+	BinaryService service.BinaryService
+
+	cfg *config.Config
 }
 
-func NewHandler(userService service.UserService, recordService service.RecordService) *Handler {
+func NewHandler(userService service.UserService, recordService service.RecordService, binaryService service.BinaryService, cfg *config.Config) *Handler {
 	return &Handler{
 		UserService:   userService,
 		RecordService: recordService,
+		BinaryService: binaryService,
+		cfg: cfg,
 	}
 }
 
 func getUserIDFromContext(ctx context.Context) (int, bool) {
-	if val := ctx.Value("user_id"); val != nil {
-		if userIDStr, ok := val.(string); ok && userIDStr != "" {
-			if userID, err := strconv.Atoi(userIDStr); err == nil {
-				return userID, true
-			}
-		}
-	}
-
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
+	userID, ok := ctx.Value(interceptor.UserIDKey{}).(int)
+	if !ok || userID == 0 {
 		return 0, false
 	}
-
-	values := md.Get("user_id")
-	if len(values) > 0 && values[0] != "" {
-		if userID, err := strconv.Atoi(values[0]); err == nil {
-			return userID, true
-		}
-	}
-
-	return 0, false
+	return userID, true
 }
 
 const UserIDKey ContextKey = "user_id"

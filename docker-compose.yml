@@ -59,11 +59,11 @@ services:
       DB_NAME: ${DB_NAME}
       DB_SSLMODE: ${DB_SSLMODE}
       SERVER_PORT: ${SERVER_PORT}
-
       MINIO_ENDPOINT: minio:9000
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_BUCKET: ${MINIO_BUCKET}
+      JWT_SECRET: ${JWT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,11 +80,15 @@ services:
       target: client
     environment:
       GRPC_SERVER_ADDRESS: ${GRPC_SERVER_ADDRESS}
+    volumes:
+      - ${HOST_FILES_DIR}:/app/files
+    working_dir: /app/files
+    tty: true
+    stdin_open: true
+    restart: no
     depends_on:
       server:
         condition: service_started
-    tty: true
-    stdin_open: true
 
 volumes:
   postgres_data:

@@ -73,7 +73,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient)
 				return textMenuModel, textMenuModel.Init()
 			case 3:
-				m.SetError("Раздел 'Бинарные данные' в разработке")
+				binaryMenuModel := NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient)
+				return binaryMenuModel, binaryMenuModel.Init()
 			case 4:
 				authModel := NewAuthModel(m.grpcClient)
 				return authModel, authModel.Init()

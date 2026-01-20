@@ -18,6 +18,13 @@ type Config struct {
 	DBPassword string `env:"DB_PASSWORD"`
 	DBName     string `env:"DB_NAME"`
 	DBSSLMode  string `env:"DB_SSLMODE"`
+
+	JWTSecret string `env:"JWT_SECRET"`
+
+	MinIOEndpoint  string `env:"MINIO_ENDPOINT"`
+	MinIOAccessKey string `env:"MINIO_ROOT_USER"`
+	MinIOSecretKey string `env:"MINIO_ROOT_PASSWORD"`
+	MinIOBucket    string `env:"MINIO_BUCKET"`
 }
 
 func Init() (*Config, error) {
