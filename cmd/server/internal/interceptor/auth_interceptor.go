@@ -2,6 +2,7 @@ package interceptor
 
 import (
 	"context"
+	"gophkeeper/internal/config"
 	"strconv"
 	"strings"
 
@@ -12,13 +13,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var JWTSecret = []byte("my-super-secret-key-for-testing")
+// Interceptor структура перехватчика
+type Interceptor struct {
+	cfg config.Config
+}
+
+// NewInterceptor создает новый Interceptor 
+func NewInterceptor(cfg config.Config) *Interceptor {
+	return &Interceptor{
+		cfg: cfg,
+	}
+}
 
 // typed key для безопасного хранения userID в context
 type UserIDKey struct{}
 
 // AuthUnaryInterceptor unary interceptor для авторизации при обычных запросах
-func AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+func (i *Interceptor) AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 	excludedMethods := map[string]bool{
 		"/auth.gophkeeper.AuthService/RegisterUser": true,
 		"/auth.gophkeeper.AuthService/AuthUser":     true,
@@ -28,7 +39,7 @@ func AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 		return handler(ctx, req)
 	}
 
-	userID, err := authenticate(ctx)
+	userID, err := i.authenticate(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +49,8 @@ func AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerIn
 }
 
 // AuthStreamInterceptor tream interceptor для авторизации при потоковых запросах
-func AuthStreamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-	userID, err := authenticate(stream.Context())
+func (i *Interceptor) AuthStreamInterceptor(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	userID, err := i.authenticate(stream.Context())
 	if err != nil {
 		return err
 	}
@@ -63,13 +74,13 @@ func (s *authServerStream) Context() context.Context {
 	return s.ctx
 }
 
-func authenticate(ctx context.Context) (int, error) {
-	tokenString, err := extractTokenFromContext(ctx)
+func (i *Interceptor) authenticate(ctx context.Context) (int, error) {
+	tokenString, err := i.extractTokenFromContext(ctx)
 	if err != nil {
 		return 0, status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
 	}
 
-	claims, err := validateJWT(tokenString)
+	claims, err := i.validateJWT(tokenString)
 	if err != nil {
 		return 0, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
@@ -88,7 +99,7 @@ func authenticate(ctx context.Context) (int, error) {
 }
 
 // extractTokenFromContext извлекает токен из заголовка Authorization
-func extractTokenFromContext(ctx context.Context) (string, error) {
+func (i *Interceptor) extractTokenFromContext(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", status.Error(codes.Unauthenticated, "missing metadata")
@@ -113,12 +124,12 @@ func extractTokenFromContext(ctx context.Context) (string, error) {
 }
 
 // validateJWT проверяет JWT-токен и возвращает claims
-func validateJWT(tokenString string) (jwt.MapClaims, error) {
+func (i *Interceptor) validateJWT(tokenString string) (jwt.MapClaims, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, status.Errorf(codes.Unauthenticated, "unexpected signing method: %v", token.Header["alg"])
 		}
-		return JWTSecret, nil
+		return i.cfg.JWTSecret, nil
 	})
 
 	if err != nil {

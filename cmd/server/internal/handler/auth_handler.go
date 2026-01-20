@@ -12,8 +12,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var JWTSecret = []byte("my-super-secret-key-for-testing")
-
 func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*proto.RegisterResponse, error) {
 	user := &domain.UserCredentials{
 		Login:    r.GetLogin(),
@@ -26,13 +24,12 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 		return nil, status.Errorf(codes.Internal, "cannot register user: %v", err)
 	}
 
-	//TODO Выделить создание токена в отдельную функцию + структуру
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": fmt.Sprintf("%v", userID),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(JWTSecret)
+	tokenString, err := token.SignedString(h.cfg.JWTSecret)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 
@@ -57,13 +54,12 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 		return nil, status.Errorf(codes.Internal, "cannot login user: %v", err)
 	}
 
-	//TODO Выделить создание токена в отдельную функцию + структуру
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": fmt.Sprintf("%v", userID),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(JWTSecret)
+	tokenString, err := token.SignedString(h.cfg.JWTSecret)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 

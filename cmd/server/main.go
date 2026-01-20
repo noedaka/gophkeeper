@@ -53,6 +53,8 @@ func main() {
 	recordService := service.NewRecordServ(recordRepo)
 	binaryService := service.NewBinaryServ(binaryRepo, minioClient, *cfg)
 
+	interceptor := interceptor.NewInterceptor(*cfg)
+
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(interceptor.AuthUnaryInterceptor),
 		grpc.StreamInterceptor(interceptor.AuthStreamInterceptor),
@@ -91,7 +93,7 @@ func main() {
 		log.Printf("Server error: %v", err)
 	}
 
-	// Graceful shutdown 
+	// Graceful shutdown
 	gracefulCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
