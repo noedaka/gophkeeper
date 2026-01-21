@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// UploadBinary осуществляет потоковую загрузку файла по чанкам
 func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) error {
 	ctx := stream.Context()
 
@@ -23,19 +24,15 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 	var s3Key string
 	var firstChunk = true
 
-	// Pipe для потоковой записи в MinIO
 	reader, writer := io.Pipe()
 
-	// Канал для ошибки upload
 	uploadErrChan := make(chan error, 1)
 
-	// Запускаем upload только после получения s3Key
 	var uploadStarted bool
 
 	for {
 		chunk, err := stream.Recv()
 		if err == io.EOF {
-			// Клиент завершил отправку
 			if !uploadStarted {
 				writer.CloseWithError(errors.New("no chunks received"))
 			} else {
@@ -48,7 +45,6 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 			return status.Errorf(codes.Internal, "failed to receive chunk: %v", err)
 		}
 
-		// Метаданные из первого чанка
 		if firstChunk {
 			if chunk.GetMetadata() == "" {
 				writer.CloseWithError(errors.New("metadata required in first chunk"))
@@ -56,7 +52,6 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 			}
 			metadata = chunk.GetMetadata()
 
-			// Создаём запись в БД
 			var createErr error
 			recordID, s3Key, createErr = h.BinaryService.Create(ctx, userID, metadata)
 			if createErr != nil {
@@ -64,32 +59,26 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 				return status.Errorf(codes.Internal, "failed to create record: %v", createErr)
 			}
 
-			// Теперь запускаем upload в MinIO
 			go func() {
 				defer writer.Close()
-				uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1) // -1 = unknown size for streaming
+				uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1) 
 			}()
 			uploadStarted = true
 
 			firstChunk = false
 		}
 
-		// Пишем чанк в pipe
 		if _, writeErr := writer.Write(chunk.GetData()); writeErr != nil {
 			return status.Errorf(codes.Internal, "failed to write chunk to pipe: %v", writeErr)
 		}
 
-		// Если последний чанк — закрываем writer (MinIO завершит)
 		if chunk.GetIsLast() {
 			writer.Close()
 		}
 	}
-
 	
-	// Ждём завершения upload в MinIO
 	if uploadStarted {
 		if uploadErr := <-uploadErrChan; uploadErr != nil {
-			// Best effort cleanup БД
 			_ = h.BinaryService.Delete(ctx, recordID, userID)
 			return status.Errorf(codes.Internal, "MinIO upload failed: %v", uploadErr)
 		}
@@ -105,7 +94,7 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 	return stream.SendAndClose(response.Build())
 }
 
-// DownloadBinary — потоковая скачка бинарного файла
+// DownloadBinary потоковая выгрузка файла по чанкам
 func (h *Handler) DownloadBinary(req *proto.BinaryRecordID, stream proto.BinaryStorage_DownloadBinaryServer) error {
 	ctx := stream.Context()
 
@@ -121,14 +110,12 @@ func (h *Handler) DownloadBinary(req *proto.BinaryRecordID, stream proto.BinaryS
 		return status.Errorf(codes.NotFound, "record not found: %v", err)
 	}
 
-	// Получаем объект из MinIO
 	objReader, _, err := h.BinaryService.Get(ctx, s3Key)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to get object from MinIO: %v", err)
 	}
 	defer objReader.Close()
-
-	// Читаем и стримим чанки клиенту (по 1-4 MB)
+	
 	const chunkSize = 4 * 1024 * 1024 // 4 MB
 	buf := make([]byte, chunkSize)
 	sequence := int32(0)
@@ -164,7 +151,7 @@ func (h *Handler) DownloadBinary(req *proto.BinaryRecordID, stream proto.BinaryS
 	return nil
 }
 
-// ListBinaries — список бинарных записей пользователя
+// ListBinaries возвращает список бинарных записей пользователя
 func (h *Handler) ListBinaries(ctx context.Context, _ *proto.BinaryEmpty) (*proto.BinaryRecordList, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
@@ -192,7 +179,7 @@ func (h *Handler) ListBinaries(ctx context.Context, _ *proto.BinaryEmpty) (*prot
 	return response.Build(), nil
 }
 
-// DeleteBinary — удаление бинарной записи
+// DeleteBinary удаляет бинарные записи
 func (h *Handler) DeleteBinary(ctx context.Context, req *proto.BinaryRecordID) (*proto.BinaryEmpty, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {

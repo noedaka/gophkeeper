@@ -12,13 +12,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// RegisterUser хэндлер для регистрации пользователя
 func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*proto.RegisterResponse, error) {
 	user := &domain.UserCredentials{
 		Login:    r.GetLogin(),
 		Password: r.GetPassword(),
 	}
 
-	//TODO Валидация ошибок
 	userID, err := h.UserService.Register(ctx, user)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot register user: %v", err)
@@ -42,13 +42,13 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 	return response.Build(), nil
 }
 
+// Authuser хэндлер для авторизации пользователя
 func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.AuthResponse, error) {
 	user := &domain.UserCredentials{
 		Login:    r.GetLogin(),
 		Password: r.GetPassword(),
 	}
 
-	//TODO Валидация ошибок
 	userID, err := h.UserService.Login(ctx, user)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot login user: %v", err)

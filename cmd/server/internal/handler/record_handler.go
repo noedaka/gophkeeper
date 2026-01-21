@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+// StoreRecord сохраняет запись
 func (h *Handler) StoreRecord(ctx context.Context, r *proto.EncryptedRecord) (*proto.RecordID, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
@@ -37,6 +38,7 @@ func (h *Handler) StoreRecord(ctx context.Context, r *proto.EncryptedRecord) (*p
 	return response.Build(), nil
 }
 
+// GetRecord возвращает запись
 func (h *Handler) GetRecord(ctx context.Context, r *proto.RecordID) (*proto.EncryptedRecord, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
@@ -58,6 +60,7 @@ func (h *Handler) GetRecord(ctx context.Context, r *proto.RecordID) (*proto.Encr
 	return response.Build(), nil
 }
 
+// ListRecords возвращает список ID записей
 func (h *Handler) ListRecords(ctx context.Context, r *proto.ListRequest) (*proto.RecordList, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {
@@ -86,6 +89,7 @@ func (h *Handler) ListRecords(ctx context.Context, r *proto.ListRequest) (*proto
 	return response.Build(), nil
 }
 
+// DeleteRecord удаляет запись
 func (h *Handler) DeleteRecord(ctx context.Context, r *proto.RecordID) (*proto.Empty, error) {
 	userID, ok := getUserIDFromContext(ctx)
 	if !ok {

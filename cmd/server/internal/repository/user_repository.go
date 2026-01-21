@@ -18,6 +18,7 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
+// Create создает пользователя в бд
 func (repo *UserRepo) Create(ctx context.Context, user *domain.UserCredentials) (int, error) {
 	tx, err := repo.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -61,6 +62,7 @@ func (repo *UserRepo) Create(ctx context.Context, user *domain.UserCredentials) 
 	return userID, nil
 }
 
+// GetIDByCreds получает ID пользователя по данным пользователя
 func (repo *UserRepo) GetIDByCreds(ctx context.Context, user *domain.UserCredentials) (int, error) {
 	var userFromDB domain.UserCredentials
 	var userID int
