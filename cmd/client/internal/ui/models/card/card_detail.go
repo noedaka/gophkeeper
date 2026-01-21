@@ -1,10 +1,13 @@
-package models
+package card
 
 import (
 	"context"
 	"fmt"
 	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"gophkeeper/internal/domain"
 	"time"
@@ -15,12 +18,14 @@ import (
 
 // CardDetailModel управляет просмотром деталей карты
 type CardDetailModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
 	cardID     int32
+
+	nav navigation.Navigator
 
 	plainCard *domain.Card
 	metadata  string
@@ -31,25 +36,23 @@ type CardDetailModel struct {
 	cursor    int
 }
 
-type (
-	CardLoadedMsg struct {
+
+type CardLoadedMsg struct {
 		PlainCard *domain.Card
 		Metadata  string
 	}
-	CardLoadErrorMsg struct {
-		Error string
-	}
-	CardDeleteConfirmMsg struct{}
-)
+type CardDeleteConfirmMsg struct{}
+
 
 // NewCardDetailModel создаёт новую модель деталей карты
-func NewCardDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, cardID int32) CardDetailModel {
+func NewCardDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, cardID int32, nav navigation.Navigator) CardDetailModel {
 	m := CardDetailModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		nav:        nav,
 		cardID:     cardID,
 		plainCard:  nil,
 		loading:    true,
@@ -88,11 +91,11 @@ func (m CardDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				return m, m.deleteCard
 			case 1:
-				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient)
+				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 				return cardListModel, cardListModel.Init()
 			}
 		case "esc":
-			cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient)
+			cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 			return cardListModel, cardListModel.Init()
 		}
 	case tea.WindowSizeMsg:
@@ -101,11 +104,11 @@ func (m CardDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.plainCard = msg.PlainCard
 		m.metadata = msg.Metadata
 		m.loading = false
-	case CardLoadErrorMsg:
+	case message.ErrorMsg:
 		m.errorMsg = msg.Error
 		m.loading = false
 	case CardDeleteConfirmMsg:
-		cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient)
+		cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 		cardListModel.SetError("Карта успешно удалена")
 		return cardListModel, cardListModel.Init()
 	}
@@ -210,17 +213,17 @@ func (m CardDetailModel) loadCard() tea.Msg {
 
 	encRec, err := m.grpcClient.GetRecord(ctx, m.cardID)
 	if err != nil {
-		return CardLoadErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
+		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
 
 	plainBytes, err := crypto.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
 	if err != nil {
-		return CardLoadErrorMsg{Error: "Ошибка расшифровки данных"}
+		return message.ErrorMsg{Error: "Ошибка расшифровки данных"}
 	}
 
 	card, err := domain.UnmarshalPlainCard(plainBytes)
 	if err != nil {
-		return CardLoadErrorMsg{Error: "Ошибка десериализации данных"}
+		return message.ErrorMsg{Error: "Ошибка десериализации данных"}
 	}
 
 	return CardLoadedMsg{
@@ -236,7 +239,7 @@ func (m CardDetailModel) deleteCard() tea.Msg {
 
 	err := m.grpcClient.DeleteRecord(ctx, m.cardID)
 	if err != nil {
-		return CardLoadErrorMsg{Error: fmt.Sprintf("Ошибка удаления: %v", err)}
+		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка удаления: %v", err)}
 	}
 	return CardDeleteConfirmMsg{}
 }

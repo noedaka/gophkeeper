@@ -1,5 +1,4 @@
-// add_binary.go — версия с ручным вводом пути
-package models
+package binary
 
 import (
 	"context"
@@ -13,6 +12,9 @@ import (
 	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"gophkeeper/internal/proto"
 
@@ -20,12 +22,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// AddBinaryModel управляет добавлением бинарника
 type AddBinaryModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+	nav        navigation.Navigator
 
 	pathInput components.InputField
 	metadata  components.InputField
@@ -40,17 +44,14 @@ type BinaryAddedMsg struct {
 	ID int32
 }
 
-type BinaryAddErrorMsg struct {
-	Error string
-}
-
-func NewAddBinaryModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) AddBinaryModel {
+func NewAddBinaryModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddBinaryModel {
 	m := AddBinaryModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		nav:        nav,
 		pathInput:  components.NewInput("Полный путь к файлу (C:\\... или /...)", false),
 		metadata:   components.NewInput("Метка/Описание (опционально)", false),
 	}
@@ -70,14 +71,13 @@ func (m AddBinaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "esc" {
-			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient), nil
+			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav), nil
 		}
 		if msg.String() == "enter" && m.fileExists {
 			m.loading = true
 			return m, m.uploadFile()
 		}
 		if msg.String() == "tab" {
-			// переключение между полями
 			if m.pathInput.Focused {
 				m.pathInput = m.pathInput.Blur()
 				m.metadata, _ = m.metadata.Focus()
@@ -89,22 +89,20 @@ func (m AddBinaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case BinaryAddedMsg:
-		menu := NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient)
+		menu := NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 		menu.SetError(fmt.Sprintf("Файл успешно загружен (ID: %d)", msg.ID))
 		return menu, nil
-	case BinaryAddErrorMsg:
+	case message.ErrorMsg:
 		m.SetError(msg.Error)
 		m.loading = false
 	}
 
-	// Обновляем поля
 	var cmd tea.Cmd
 	m.pathInput, cmd = m.pathInput.Update(msg)
 	cmds = append(cmds, cmd)
 	m.metadata, cmd = m.metadata.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// Проверка существования файла при вводе пути
 	path := m.pathInput.Model.Value()
 	if path != "" {
 		info, err := os.Stat(path)
@@ -120,10 +118,6 @@ func (m AddBinaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m AddBinaryModel) View() string {
-	if m.Width == 0 || m.Height == 0 {
-		return "Загрузка..."
-	}
-
 	title := styles.TitleStyle.Render("Загрузить бинарный файл")
 
 	pathLabel := "Путь к файлу:"
@@ -168,8 +162,6 @@ func (m AddBinaryModel) View() string {
 	return m.Center(content)
 }
 
-// renderProgress и uploadFile — как раньше (uploadFile использует m.pathInput.Model.Value())
-
 func (m AddBinaryModel) renderProgress() string {
 	if !m.loading {
 		return ""
@@ -180,7 +172,7 @@ func (m AddBinaryModel) renderProgress() string {
 func (m AddBinaryModel) uploadFile() tea.Cmd {
 	if m.pathInput.Value() == "" {
 		return func() tea.Msg {
-			return BinaryAddErrorMsg{Error: "Файл не выбран"}
+			return message.ErrorMsg{Error: "Файл не выбран"}
 		}
 	}
 	return func() tea.Msg {
@@ -193,7 +185,7 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 		file, err := os.Open(m.pathInput.Value())
 		if err != nil {
 			log.Printf("Open file error: %v", err)
-			return BinaryAddErrorMsg{Error: fmt.Sprintf("Не удалось открыть файл: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Не удалось открыть файл: %v", err)}
 		}
 		defer file.Close()
 		metadata := m.metadata.Model.Value()
@@ -206,21 +198,21 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 		stream, err := m.grpcClient.UploadBinary(ctx)
 		if err != nil {
 			log.Printf("UploadBinary stream error: %v", err)
-			return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка открытия stream: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка открытия stream: %v", err)}
 		}
 		log.Printf("Stream opened successfully")
 		const chunkSize = 4 * 1024 * 1024
 		buf := make([]byte, chunkSize)
 		sequence := int32(0)
 		first := true
-		var sentData bool // флаг: были ли отправлены данные (не пустой чанк)
+		var sentData bool 
 		hasMoreData := true
 		for hasMoreData {
 			n, readErr := file.Read(buf)
 			log.Printf("Read %d bytes from file", n)
 			if readErr != nil && readErr != io.EOF {
 				log.Printf("Read error: %v", readErr)
-				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка чтения файла: %v", readErr)}
+				return message.ErrorMsg{Error: fmt.Sprintf("Ошибка чтения файла: %v", readErr)}
 			}
 
 			var plainChunk []byte
@@ -229,14 +221,11 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 			if n == 0 {
 				if readErr == io.EOF {
 					if sentData {
-						// Это лишний вызов Read после конца файла — пропускаем отправку
 						skipSend = true
 					} else {
-						// Пустой файл — отправляем один пустой зашифрованный чанк
 						plainChunk = []byte{}
 					}
 				} else {
-					// n==0 и err==nil — редкий случай, просто продолжаем
 					continue
 				}
 			} else {
@@ -250,10 +239,9 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 
 			encrypted, nonce, encErr := crypto.Encrypt(plainChunk)
 			if encErr != nil {
-				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка шифрования: %v", encErr)}
+				return message.ErrorMsg{Error: fmt.Sprintf("Ошибка шифрования: %v", encErr)}
 			}
 
-			// Prepend nonce к ciphertext
 			chunkData := append(nonce, encrypted...)
 
 			meta := ""
@@ -268,14 +256,13 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 				Sequence: &sequence,
 				Metadata: &meta,
 				IsLast:   &isLast,
-				// Nonce больше не отправляем (или отправляем nil)
 			}
 			builtChunk := chunk.Build()
 			log.Printf("Sending chunk: size=%d (encrypted), sequence=%d, is_last=%v", len(builtChunk.GetData()), sequence, isLast)
 			sendErr := stream.Send(builtChunk)
 			if sendErr != nil {
 				log.Printf("Send error: %v", sendErr)
-				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка отправки чанка: %v", sendErr)}
+				return message.ErrorMsg{Error: fmt.Sprintf("Ошибка отправки чанка: %v", sendErr)}
 			}
 			log.Printf("Chunk sent successfully")
 			sequence++
@@ -292,104 +279,9 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 		resp, closeErr := stream.CloseAndRecv()
 		if closeErr != nil {
 			log.Printf("CloseAndRecv error: %v", closeErr)
-			return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка завершения upload: %v", closeErr)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка завершения upload: %v", closeErr)}
 		}
 		log.Printf("Upload successful, ID=%d", resp.GetId())
 		return BinaryAddedMsg{ID: resp.GetId()}
 	}
 }
-
-// // uploadFile — использует m.selectedFile и m.metadata
-// func (m AddBinaryModel) uploadFile() tea.Cmd {
-// 	if m.pathInput.Value() == "" {
-// 		return func() tea.Msg {
-// 			return BinaryAddErrorMsg{Error: "Файл не выбран"}
-// 		}
-// 	}
-
-// 	return func() tea.Msg {
-// 		// Recover от паники — чтобы клиент не крашился
-// 		defer func() {
-// 			if r := recover(); r != nil {
-// 				log.Printf("Recovered from panic in uploadFile: %v", r)
-// 			}
-// 		}()
-
-// 		file, err := os.Open(m.pathInput.Value())
-// 		if err != nil {
-// 			return BinaryAddErrorMsg{Error: fmt.Sprintf("Не удалось открыть файл: %v", err)}
-// 		}
-// 		defer file.Close() // закрываем здесь, надёжно
-
-// 		fileInfo, err := file.Stat()
-// 		if err != nil {
-// 			return BinaryAddErrorMsg{Error: fmt.Sprintf("Не удалось получить info файла: %v", err)}
-// 		}
-// 		if fileInfo.Size() == 0 {
-// 			return BinaryAddErrorMsg{Error: "Файл пустой"}
-// 		}
-
-// 		metadata := m.metadata.Model.Value()
-// 		if metadata == "" {
-// 			metadata = filepath.Base(m.pathInput.Value())
-// 		}
-
-// 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
-// 		defer cancel()
-
-// 		stream, err := m.grpcClient.UploadBinary(ctx)
-// 		if err != nil {
-// 			return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка открытия stream: %v", err)}
-// 		}
-
-// 		const chunkSize = 4 * 1024 * 1024 // 4 MB
-// 		buf := make([]byte, chunkSize)
-// 		sequence := int32(0)
-// 		first := true
-
-// 		for {
-// 			n, readErr := io.ReadFull(file, buf) // безопасное чтение
-// 			if n == 0 && readErr == io.EOF {
-// 				break
-// 			}
-// 			if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
-// 				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка чтения файла: %v", readErr)}
-// 			}
-
-// 			plainChunk := buf[:n]
-
-// 			encrypted, nonce, encErr := crypto.Encrypt(plainChunk)
-// 			if encErr != nil {
-// 				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка шифрования: %v", encErr)}
-// 			}
-
-// 			meta := ""
-// 			if first {
-// 				meta = metadata
-// 				first = false
-// 			}
-
-// 			isLast := readErr == io.EOF || readErr == io.ErrUnexpectedEOF
-// 			chunk := proto.BinaryChunk_builder{
-// 				Data:     encrypted,
-// 				Nonce:    nonce,
-// 				Sequence: &sequence,
-// 				Metadata: &meta,
-// 				IsLast:   &isLast,
-// 			}
-
-// 			if sendErr := stream.Send(chunk.Build()); sendErr != nil {
-// 				return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка отправки чанка: %v", sendErr)}
-// 			}
-
-// 			sequence++
-// 		}
-
-// 		resp, err := stream.CloseAndRecv()
-// 		if err != nil {
-// 			return BinaryAddErrorMsg{Error: fmt.Sprintf("Ошибка завершения upload: %v", err)}
-// 		}
-
-// 		return BinaryAddedMsg{ID: resp.GetId()}
-// 	}
-// }

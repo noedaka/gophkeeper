@@ -1,34 +1,38 @@
-package models
+package creds
 
 import (
 	"fmt"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-// TextMenuModel управляет меню работы с произвольным текстом
-type TextMenuModel struct {
-	BaseModel
+// CredsMenuModel управляет меню работы с логинами/паролями
+type CredsMenuModel struct {
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
+	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
 	grpcClient *grpcclient.GophKeeperClient
 }
 
-// NewTextMenuModel создает новую модель меню работы с произвольным текстом
-func NewTextMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) TextMenuModel {
-	return TextMenuModel{
-		BaseModel: NewBaseModel(),
+// NewCredsMenuModel создаёт новую модель меню логинов/паролей
+func NewCredsMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CredsMenuModel {
+	return CredsMenuModel{
+		BaseModel: base.NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		nav:       nav,
 		menuItems: []string{
-			"Добавить произвольный текст",
+			"Добавить логин/пароль",
 			"Список записей",
 			"Назад",
 		},
@@ -38,11 +42,12 @@ func NewTextMenuModel(token, userID, login string, grpcClient *grpcclient.GophKe
 }
 
 // Init инициализирует модель
-func (m TextMenuModel) Init() tea.Cmd {
+func (m CredsMenuModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m TextMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+// Update обрабатывает сообщения
+func (m CredsMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -59,19 +64,17 @@ func (m TextMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter", " ":
 			switch m.cursor {
-			case 0: 
-				addTextModel := NewAddTextModel(m.token, m.userID, m.login, m.grpcClient)
-				return addTextModel, addTextModel.Init()
-			case 1: 
-				credsListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient)
-				return credsListModel, credsListModel.Init()
+			case 0:
+				addCredsModel := NewAddCredsModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				return addCredsModel, addCredsModel.Init()
+			case 1:
+				listCredModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				return listCredModel, listCredModel.Init()
 			case 2:
-				mainModel := NewMainModel(m.token, m.userID, m.login, m.grpcClient)
-				return mainModel, mainModel.Init()
+				return m.nav.BackToMain()
 			}
 		case "esc":
-			mainModel := NewMainModel(m.token, m.userID, m.login, m.grpcClient)
-			return mainModel, mainModel.Init()
+			return m.nav.BackToMain()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
@@ -80,8 +83,8 @@ func (m TextMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View отображает интерфейс
-func (m TextMenuModel) View() string {
-	title := styles.TitleStyle.Render("Произвольный текст")
+func (m CredsMenuModel) View() string {
+	title := styles.TitleStyle.Render("Логины и пароли")
 	subtitle := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
 		Render(fmt.Sprintf("Пользователь: %s", m.login))

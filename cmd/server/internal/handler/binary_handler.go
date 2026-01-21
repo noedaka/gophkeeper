@@ -85,6 +85,7 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 		}
 	}
 
+	
 	// Ждём завершения upload в MinIO
 	if uploadStarted {
 		if uploadErr := <-uploadErrChan; uploadErr != nil {

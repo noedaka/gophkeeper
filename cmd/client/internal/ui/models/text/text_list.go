@@ -1,9 +1,12 @@
-package models
+package text
 
 import (
 	"context"
 	"fmt"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"sort"
 	"time"
@@ -12,47 +15,45 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type CredsListModel struct {
-	BaseModel
+// TextListModel модель списка текстов
+type TextListModel struct {
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
-
-	credIDs  []int32
-	cursor   int
-	loading  bool
-	errorMsg string
+	nav        navigation.Navigator
+	textIDs    []int32
+	cursor     int
+	loading    bool
+	errorMsg   string
 }
 
-type (
-	CredsLoadedMsg struct {
-		CredIDs []int32
-	}
-	CredsLoadErrorMsg struct {
-		Error string
-	}
-)
 
-func NewCredsListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) CredsListModel {
-	m := CredsListModel{
-		BaseModel:  NewBaseModel(),
+type TextIDLoadedMsg struct {
+	textIDs []int32
+}
+
+func NewTextListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) TextListModel {
+	m := TextListModel{
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		nav:        nav,
 		grpcClient: grpcClient,
-		credIDs:    []int32{},
+		textIDs:    []int32{},
 		cursor:     0,
-		loading:    true,
 	}
+
 	return m
 }
 
-func (m CredsListModel) Init() tea.Cmd {
-	return m.loadCreds
+func (m TextListModel) Init() tea.Cmd {
+	return m.loadText
 }
 
-func (m CredsListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m TextListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if m.loading {
@@ -67,53 +68,47 @@ func (m CredsListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor--
 			}
 		case "down", "j":
-			if m.cursor < len(m.credIDs)-1 {
+			if m.cursor < len(m.textIDs)-1 {
 				m.cursor++
 			}
 		case "enter":
-			if len(m.credIDs) > 0 && m.cursor < len(m.credIDs) {
-				credID := m.credIDs[m.cursor]
-				detailModel := NewCredsDetailModel(m.token, m.userID, m.login, m.grpcClient, credID)
+			if len(m.textIDs) > 0 && m.cursor < len(m.textIDs) {
+				credID := m.textIDs[m.cursor]
+				detailModel := NewTextDetailModel(m.token, m.userID, m.login, m.grpcClient, credID, m.nav)
 				return detailModel, detailModel.Init()
 			}
 		case "r", "R":
 			m.loading = true
 			m.errorMsg = ""
-			return m, m.loadCreds
+			return m, m.loadText
 		case "esc":
-			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
-			return credsMenuModel, credsMenuModel.Init()
+			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			return textMenuModel, textMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
-	case CredsLoadedMsg:
-		m.credIDs = msg.CredIDs
+	case TextIDLoadedMsg:
+		m.textIDs = msg.textIDs
 		m.loading = false
-		sort.Slice(m.credIDs, func(i, j int) bool {
-			return m.credIDs[i] < m.credIDs[j]
+		sort.Slice(m.textIDs, func(i, j int) bool {
+			return m.textIDs[i] < m.textIDs[j]
 		})
-	case CredsLoadErrorMsg:
+	case message.ErrorMsg:
 		m.errorMsg = msg.Error
 		m.loading = false
 	}
 	return m, nil
 }
 
-func (m CredsListModel) View() string {
-	title := styles.TitleStyle.Render("Список логинов/паролей")
+func (m TextListModel) View() string {
+	title := styles.TitleStyle.Render("Список текстов")
 	subtitle := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
-		Render(fmt.Sprintf("Найдено записей: %d", len(m.credIDs)))
+		Render(fmt.Sprintf("Найдено записей: %d", len(m.textIDs)))
 
 	var content string
 
-	if m.loading {
-		content = lipgloss.JoinVertical(lipgloss.Center,
-			title,
-			"",
-			m.renderLoading(),
-		)
-	} else if m.errorMsg != "" {
+	if m.errorMsg != "" {
 		content = lipgloss.JoinVertical(lipgloss.Center,
 			title,
 			"",
@@ -121,7 +116,7 @@ func (m CredsListModel) View() string {
 			"",
 			styles.HelpStyle.Render("Нажмите R для повторной загрузки • Esc: назад"),
 		)
-	} else if len(m.credIDs) == 0 {
+	} else if len(m.textIDs) == 0 {
 		content = lipgloss.JoinVertical(lipgloss.Center,
 			title,
 			"",
@@ -133,7 +128,7 @@ func (m CredsListModel) View() string {
 		)
 	} else {
 		var items []string
-		for i, credID := range m.credIDs {
+		for i, credID := range m.textIDs {
 			item := fmt.Sprintf("Запись #%d", credID)
 			if i == m.cursor {
 				items = append(items,
@@ -167,21 +162,13 @@ func (m CredsListModel) View() string {
 	return m.Center(content)
 }
 
-func (m CredsListModel) renderLoading() string {
-	frames := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
-	frame := frames[int(time.Now().UnixNano()/int64(time.Millisecond))%len(frames)]
-	return lipgloss.NewStyle().
-		Foreground(styles.PrimaryColor).
-		Render(frame + " Загрузка списка записей...")
-}
-
-func (m CredsListModel) loadCreds() tea.Msg {
+func (m TextListModel) loadText() tea.Msg {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	infos, err := m.grpcClient.ListRecords(ctx, "creds")
+	infos, err := m.grpcClient.ListRecords(ctx, "text")
 	if err != nil {
-		return CredsLoadErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
+		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
 
 	var ids []int32
@@ -189,5 +176,5 @@ func (m CredsListModel) loadCreds() tea.Msg {
 		ids = append(ids, info.GetId())
 	}
 
-	return CredsLoadedMsg{CredIDs: ids}
+	return TextIDLoadedMsg{textIDs: ids}
 }

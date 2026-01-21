@@ -1,4 +1,4 @@
-package models
+package text
 
 import (
 	"context"
@@ -6,6 +6,9 @@ import (
 	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
@@ -15,13 +18,15 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// AddTextModel управляет работой добавлением текста
 type AddTextModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
 
+	nav      navigation.Navigator
 	text     components.InputField
 	metadata components.InputField
 
@@ -29,22 +34,19 @@ type AddTextModel struct {
 	submitBtn string
 }
 
-type (
-	TextAddedMsg struct {
-		CredID int32
-	}
-	TextAddErrorMsg struct {
-		Error string
-	}
-)
+type TextAddedMsg struct {
+	CredID int32
+}
 
-func NewAddTextModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) AddTextModel {
+// NewAddTextModel создает новую модель добавления произвольного текста
+func NewAddTextModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddTextModel {
 	m := AddTextModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		nav:        nav,
 
 		text:     components.NewInput("Текст", false),
 		metadata: components.NewInput("Метка/Название", false),
@@ -58,10 +60,12 @@ func NewAddTextModel(token, userID, login string, grpcClient *grpcclient.GophKee
 	return m
 }
 
+// Init инициализирует модель
 func (m AddTextModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update обновляет состоние модели 
 func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -81,16 +85,16 @@ func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.moveCursor(false)
 		case "esc":
-			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient)
+			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 			return textMenuModel, textMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case TextAddedMsg:
-		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient)
+		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 		textMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
 		return textMenuModel, textMenuModel.Init()
-	case TextAddErrorMsg:
+	case message.ErrorMsg:
 		m.SetError(msg.Error)
 	}
 
@@ -103,6 +107,7 @@ func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// moveCursor обрабатывает логику изменения курсора 
 func (m AddTextModel) moveCursor(backward bool) AddTextModel {
 	m = m.blurAll()
 
@@ -136,12 +141,14 @@ func (m AddTextModel) moveCursor(backward bool) AddTextModel {
 	return m
 }
 
+// blurAll снимает фокус с полей
 func (m AddTextModel) blurAll() AddTextModel {
 	m.text = m.text.Blur()
 	m.metadata = m.metadata.Blur()
 	return m
 }
 
+// View отображает интерфейс
 func (m AddTextModel) View() string {
 	title := styles.TitleStyle.Render("Добавить текст")
 
@@ -168,6 +175,7 @@ func (m AddTextModel) View() string {
 	return m.Center(content)
 }
 
+// renderField отображает выбранное поле
 func (m AddTextModel) renderField(label string, fieldView string, index int) string {
 	if m.cursorPos == index {
 		label = "-> " + label
@@ -179,23 +187,24 @@ func (m AddTextModel) renderField(label string, fieldView string, index int) str
 	)
 }
 
+// sumbit обрабатыват нажатие кнопки отправить 
 func (m AddTextModel) submit() tea.Cmd {
 	plainText := &domain.Text{
-		Text:       m.text.Model.Value(),
-		Metadata:    m.metadata.Model.Value(),
+		Text:     m.text.Model.Value(),
+		Metadata: m.metadata.Model.Value(),
 	}
 
 	plainBytes, err := plainText.MarshalPlain()
 	if err != nil {
 		return func() tea.Msg {
-			return TextAddErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
 		}
 	}
 
 	encrypted, nonce, err := crypto.Encrypt(plainBytes)
 	if err != nil {
 		return func() tea.Msg {
-			return TextAddErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
 		}
 	}
 
@@ -212,7 +221,7 @@ func (m AddTextModel) submit() tea.Cmd {
 		defer cancel()
 		credID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
 		if err != nil {
-			return TextAddErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
 		}
 		return TextAddedMsg{CredID: credID}
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// InputField - кастомный компонент ввода
+// InputField кастомный компонент ввода
 type InputField struct {
 	textinput.Model
 	Placeholder string

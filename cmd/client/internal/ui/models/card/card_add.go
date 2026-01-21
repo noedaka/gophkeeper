@@ -1,4 +1,4 @@
-package models
+package card
 
 import (
 	"context"
@@ -10,6 +10,9 @@ import (
 	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
@@ -20,11 +23,13 @@ import (
 
 // AddCardModel управляет формой добавления карты
 type AddCardModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+
+	nav navigation.Navigator
 
 	cardNumber components.InputField
 	cardHolder components.InputField
@@ -36,24 +41,19 @@ type AddCardModel struct {
 	submitBtn string
 }
 
-// Сообщения
-type (
-	CardAddedMsg struct {
-		CardID int32
-	}
-	CardAddErrorMsg struct {
-		Error string
-	}
-)
+type CardAddedMsg struct {
+	CardID int32
+}
 
 // NewAddCardModel создаёт новую модель добавления карты
-func NewAddCardModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) AddCardModel {
+func NewAddCardModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddCardModel {
 	m := AddCardModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		nav:        nav,
 
 		cardNumber: components.NewInput("Номер карты (16 цифр)", false),
 		cardHolder: components.NewInput("Держатель карты", false),
@@ -103,7 +103,7 @@ func (m AddCardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m = m.moveCursor(false)
 
 		case "esc":
-			cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient)
+			cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 			return cardMenuModel, cardMenuModel.Init()
 		}
 
@@ -111,11 +111,11 @@ func (m AddCardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateSize(msg)
 
 	case CardAddedMsg:
-		cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient)
+		cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 		cardMenuModel.SetError(fmt.Sprintf("Карта успешно добавлена (ID: %d)", msg.CardID))
 		return cardMenuModel, cardMenuModel.Init()
 
-	case CardAddErrorMsg:
+	case message.ErrorMsg:
 		m.SetError(msg.Error)
 	}
 
@@ -185,7 +185,7 @@ func (m AddCardModel) moveCursor(backward bool) AddCardModel {
 	if backward {
 		m.cursorPos--
 		if m.cursorPos < 0 {
-			m.cursorPos = 5 
+			m.cursorPos = 5
 		}
 	} else {
 		m.cursorPos++
@@ -231,7 +231,7 @@ func (m AddCardModel) blurAll() AddCardModel {
 func (m AddCardModel) submit() tea.Cmd {
 	if err := m.validate(); err != nil {
 		return func() tea.Msg {
-			return CardAddErrorMsg{Error: err.Error()}
+			return message.ErrorMsg{Error: err.Error()}
 		}
 	}
 
@@ -246,14 +246,14 @@ func (m AddCardModel) submit() tea.Cmd {
 	plainBytes, err := plainCard.MarshalPlain()
 	if err != nil {
 		return func() tea.Msg {
-			return CardAddErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
 		}
 	}
 
 	encrypted, nonce, err := crypto.Encrypt(plainBytes)
 	if err != nil {
 		return func() tea.Msg {
-			return CardAddErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
 		}
 	}
 
@@ -270,7 +270,7 @@ func (m AddCardModel) submit() tea.Cmd {
 		defer cancel()
 		cardID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
 		if err != nil {
-			return CardAddErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
 		}
 		return CardAddedMsg{CardID: cardID}
 	}

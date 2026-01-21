@@ -129,7 +129,7 @@ func (i *Interceptor) validateJWT(tokenString string) (jwt.MapClaims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, status.Errorf(codes.Unauthenticated, "unexpected signing method: %v", token.Header["alg"])
 		}
-		return i.cfg.JWTSecret, nil
+		return []byte(i.cfg.JWTSecret), nil
 	})
 
 	if err != nil {

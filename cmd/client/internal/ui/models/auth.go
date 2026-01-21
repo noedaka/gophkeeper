@@ -5,6 +5,8 @@ import (
 
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
 	"gophkeeper/cmd/client/internal/ui/styles"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,7 +15,7 @@ import (
 
 // AuthModel управляет экраном аутентификации
 type AuthModel struct {
-	BaseModel
+	base.BaseModel
 	grpcClient *grpcclient.GophKeeperClient
 	activeTab  string
 	loginEmail components.InputField
@@ -25,22 +27,21 @@ type AuthModel struct {
 	cursorPos  int 
 }
 
-type (
-	SwitchTabMsg   string
-	AuthSuccessMsg struct {
-		Token  string
-		UserID string
-		Login  string
-	}
-	AuthErrorMsg struct {
-		Error string
-	}
-)
+
+type SwitchTabMsg   string
+
+type AuthSuccessMsg struct {
+	Token  string
+	UserID string
+	Login  string
+}
+
+
 
 // NewAuthModel создаёт новую модель аутентификации
 func NewAuthModel(grpcClient *grpcclient.GophKeeperClient) AuthModel {
 	m := AuthModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		grpcClient: grpcClient,
 		activeTab:  "login",
 		loginEmail: components.NewInput("Логин", false),
@@ -100,14 +101,13 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeTab = string(msg)
 		m = m.resetForm()
 
-	case AuthErrorMsg:
+	case message.ErrorMsg:
 		m.SetError(msg.Error)
 
 	case AuthSuccessMsg:
 		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login, m.grpcClient)
 		return mainModel, mainModel.Init()
 	}
-
 
 	var cmd tea.Cmd
 	if m.activeTab == "login" {
@@ -129,7 +129,6 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View отображает интерфейс
 func (m AuthModel) View() string {
-
 	title := styles.TitleStyle.Render("GophKeeper")
 	subtitle := lipgloss.NewStyle().
 		Foreground(styles.SecondaryColor).
@@ -334,20 +333,20 @@ func (m AuthModel) login() tea.Cmd {
 
 	if login == "" || password == "" {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Заполните все поля"}
+			return message.ErrorMsg{Error: "Заполните все поля"}
 		}
 	}
 
 	if m.grpcClient == nil {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Нет подключения к серверу"}
+			return message.ErrorMsg{Error: "Нет подключения к серверу"}
 		}
 	}
 
 	return func() tea.Msg {
 		token, err := m.grpcClient.Login(m.Ctx, login, password)
 		if err != nil {
-			return AuthErrorMsg{Error: fmt.Sprintf("Ошибка входа: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка входа: %v", err)}
 		}
 
 		return AuthSuccessMsg{
@@ -365,32 +364,32 @@ func (m AuthModel) register() tea.Cmd {
 
 	if login == "" || password == "" || confirm == "" {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Заполните все поля"}
+			return message.ErrorMsg{Error: "Заполните все поля"}
 		}
 	}
 
 	if len(password) < 6 {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Пароль должен содержать минимум 6 символов"}
+			return message.ErrorMsg{Error: "Пароль должен содержать минимум 6 символов"}
 		}
 	}
 
 	if password != confirm {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Пароли не совпадают"}
+			return message.ErrorMsg{Error: "Пароли не совпадают"}
 		}
 	}
 
 	if m.grpcClient == nil {
 		return func() tea.Msg {
-			return AuthErrorMsg{Error: "Нет подключения к серверу"}
+			return message.ErrorMsg{Error: "Нет подключения к серверу"}
 		}
 	}
 
 	return func() tea.Msg {
 		token, err := m.grpcClient.Register(m.Ctx, login, password)
 		if err != nil {
-			return AuthErrorMsg{Error: fmt.Sprintf("Ошибка регистрации: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка регистрации: %v", err)}
 		}
 
 		return AuthSuccessMsg{

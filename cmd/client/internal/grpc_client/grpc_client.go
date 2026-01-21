@@ -103,6 +103,7 @@ func (c *GophKeeperClient) Login(ctx context.Context, login, password string) (s
 	return token, nil
 }
 
+// StoreRecord сохраняет запись на сервер
 func (c *GophKeeperClient) StoreRecord(ctx context.Context, record *pb.EncryptedRecord) (int32, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -117,6 +118,7 @@ func (c *GophKeeperClient) StoreRecord(ctx context.Context, record *pb.Encrypted
 	return resp.GetId(), nil
 }
 
+// GetRecord получает запись с сервера по его ID
 func (c *GophKeeperClient) GetRecord(ctx context.Context, recordID int32) (*pb.EncryptedRecord, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -129,6 +131,7 @@ func (c *GophKeeperClient) GetRecord(ctx context.Context, recordID int32) (*pb.E
 	return c.storageClient.GetRecord(ctx, req.Build())
 }
 
+// ListRecords получает список всех записей по ID, сделанные определенным пользователем
 func (c *GophKeeperClient) ListRecords(ctx context.Context, recordType string) ([]*pb.RecordInfo, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -144,6 +147,7 @@ func (c *GophKeeperClient) ListRecords(ctx context.Context, recordType string) (
 	return resp.GetRecords(), nil
 }
 
+// DeleteRecord удаляет запись по ID
 func (c *GophKeeperClient) DeleteRecord(ctx context.Context, recordID int32) error {
 	token := c.GetToken()
 	if token == "" {
@@ -159,7 +163,7 @@ func (c *GophKeeperClient) DeleteRecord(ctx context.Context, recordID int32) err
 	return err
 }
 
-// Streaming upload
+// UploadBinary потоково загружает бинарный файл на сервер
 func (c *GophKeeperClient) UploadBinary(ctx context.Context) (proto.BinaryStorage_UploadBinaryClient, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -169,7 +173,7 @@ func (c *GophKeeperClient) UploadBinary(ctx context.Context) (proto.BinaryStorag
 	return c.binaryClient.UploadBinary(ctx)
 }
 
-// Streaming download
+// DownloadBinary потково выгружает файл с сервера
 func (c *GophKeeperClient) DownloadBinary(ctx context.Context, recordID int32) (proto.BinaryStorage_DownloadBinaryClient, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -180,6 +184,7 @@ func (c *GophKeeperClient) DownloadBinary(ctx context.Context, recordID int32) (
 	return c.binaryClient.DownloadBinary(ctx, req)
 }
 
+// ListBinaries получает список бинарных файлов
 func (c *GophKeeperClient) ListBinaries(ctx context.Context) ([]*pb.BinaryRecordInfo, error) {
 	token := c.GetToken()
 	if token == "" {
@@ -197,6 +202,7 @@ func (c *GophKeeperClient) ListBinaries(ctx context.Context) ([]*pb.BinaryRecord
 	return resp.GetRecords(), nil
 }
 
+// DeleteBinary удаляет бинарный файл
 func (c *GophKeeperClient) DeleteBinary(ctx context.Context, recordID int32) error {
 	token := c.GetToken()
 	if token == "" {

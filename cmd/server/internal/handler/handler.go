@@ -36,7 +36,3 @@ func getUserIDFromContext(ctx context.Context) (int, bool) {
 	}
 	return userID, true
 }
-
-const UserIDKey ContextKey = "user_id"
-
-type ContextKey string

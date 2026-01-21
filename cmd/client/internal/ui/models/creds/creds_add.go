@@ -1,4 +1,4 @@
-package models
+package creds
 
 import (
 	"context"
@@ -9,6 +9,9 @@ import (
 	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
@@ -19,37 +22,37 @@ import (
 
 // AddCredsModel управляет формой добавления логина/пароля
 type AddCredsModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+
+	nav navigation.Navigator
 
 	username components.InputField
 	password components.InputField
 	service  components.InputField
 	metadata components.InputField
 
-	cursorPos int 
+	cursorPos int
 	submitBtn string
 }
 
-type (
-	CredsAddedMsg struct {
-		CredID int32
-	}
-	CredsAddErrorMsg struct {
-		Error string
-	}
-)
+type CredsAddedMsg struct {
+	CredID int32
+}
 
-func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) AddCredsModel {
+// NewCredsMenuModel создаёт новую модель формы добавления логинов/паролей
+func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddCredsModel {
 	m := AddCredsModel{
-		BaseModel:  NewBaseModel(),
+		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+
+		nav: nav,
 
 		username: components.NewInput("Логин/Email", false),
 		password: components.NewInput("Пароль", true),
@@ -65,10 +68,12 @@ func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKe
 	return m
 }
 
+// Init инициализирует модель
 func (m AddCredsModel) Init() tea.Cmd {
 	return nil
 }
 
+// Update обрабатывает сообщения
 func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -88,16 +93,16 @@ func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.moveCursor(false)
 		case "esc":
-			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
+			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 			return credsMenuModel, credsMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case CredsAddedMsg:
-		credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient)
+		credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 		credsMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
 		return credsMenuModel, credsMenuModel.Init()
-	case CredsAddErrorMsg:
+	case message.ErrorMsg:
 		m.SetError(msg.Error)
 	}
 
@@ -114,6 +119,7 @@ func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// View отображает интерфейс
 func (m AddCredsModel) View() string {
 	title := styles.TitleStyle.Render("Добавить логин/пароль")
 
@@ -201,7 +207,7 @@ func (m AddCredsModel) blurAll() AddCredsModel {
 func (m AddCredsModel) submit() tea.Cmd {
 	if err := m.validate(); err != nil {
 		return func() tea.Msg {
-			return CredsAddErrorMsg{Error: err.Error()}
+			return message.ErrorMsg{Error: err.Error()}
 		}
 	}
 
@@ -215,14 +221,14 @@ func (m AddCredsModel) submit() tea.Cmd {
 	plainBytes, err := plainCreds.MarshalPlain()
 	if err != nil {
 		return func() tea.Msg {
-			return CredsAddErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
 		}
 	}
 
 	encrypted, nonce, err := crypto.Encrypt(plainBytes)
 	if err != nil {
 		return func() tea.Msg {
-			return CredsAddErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
 		}
 	}
 
@@ -239,7 +245,7 @@ func (m AddCredsModel) submit() tea.Cmd {
 		defer cancel()
 		credID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
 		if err != nil {
-			return CredsAddErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
 		}
 		return CredsAddedMsg{CredID: credID}
 	}

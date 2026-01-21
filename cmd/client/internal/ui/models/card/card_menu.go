@@ -1,8 +1,10 @@
-package models
+package card
 
 import (
 	"fmt"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	"gophkeeper/cmd/client/internal/ui/navigation"
 	"gophkeeper/cmd/client/internal/ui/styles"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -11,10 +13,11 @@ import (
 
 // CardMenuModel управляет меню работы с картами
 type CardMenuModel struct {
-	BaseModel
+	base.BaseModel
 	token      string
 	userID     string
 	login      string
+	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
 	grpcClient *grpcclient.GophKeeperClient
@@ -27,12 +30,13 @@ type (
 )
 
 // NewCardMenuModel создаёт новую модель меню карт
-func NewCardMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) CardMenuModel {
+func NewCardMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CardMenuModel {
 	return CardMenuModel{
-		BaseModel: NewBaseModel(),
+		BaseModel: base.NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		nav:       nav,
 		menuItems: []string{
 			"Добавить карту",
 			"Список карт",
@@ -67,18 +71,16 @@ func (m CardMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			switch m.cursor {
 			case 0:
-				addCardModel := NewAddCardModel(m.token, m.userID, m.login, m.grpcClient)
+				addCardModel := NewAddCardModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 				return addCardModel, addCardModel.Init()
-			case 1: 
-				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient)
+			case 1:
+				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
 				return cardListModel, cardListModel.Init()
 			case 2:
-				mainModel := NewMainModel(m.token, m.userID, m.login, m.grpcClient)
-				return mainModel, mainModel.Init()
+				return m.nav.BackToMain()
 			}
 		case "esc":
-			mainModel := NewMainModel(m.token, m.userID, m.login, m.grpcClient)
-			return mainModel, mainModel.Init()
+			return m.nav.BackToMain()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)

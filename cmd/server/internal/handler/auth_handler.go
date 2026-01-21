@@ -29,7 +29,7 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(h.cfg.JWTSecret)
+	tokenString, err := token.SignedString([]byte(h.cfg.JWTSecret))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 
@@ -59,7 +59,7 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	tokenString, err := token.SignedString(h.cfg.JWTSecret)
+	tokenString, err := token.SignedString([]byte(h.cfg.JWTSecret))
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot create JWT Token: %v", err)
 
