@@ -25,7 +25,7 @@ func NewHandler(userService service.UserService, recordService service.RecordSer
 		UserService:   userService,
 		RecordService: recordService,
 		BinaryService: binaryService,
-		cfg: cfg,
+		cfg:           cfg,
 	}
 }
 

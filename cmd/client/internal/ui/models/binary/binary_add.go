@@ -205,7 +205,7 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 		buf := make([]byte, chunkSize)
 		sequence := int32(0)
 		first := true
-		var sentData bool 
+		var sentData bool
 		hasMoreData := true
 		for hasMoreData {
 			n, readErr := file.Read(buf)

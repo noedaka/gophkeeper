@@ -61,7 +61,7 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 
 			go func() {
 				defer writer.Close()
-				uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1) 
+				uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1)
 			}()
 			uploadStarted = true
 
@@ -76,7 +76,7 @@ func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) er
 			writer.Close()
 		}
 	}
-	
+
 	if uploadStarted {
 		if uploadErr := <-uploadErrChan; uploadErr != nil {
 			_ = h.BinaryService.Delete(ctx, recordID, userID)
@@ -115,7 +115,7 @@ func (h *Handler) DownloadBinary(req *proto.BinaryRecordID, stream proto.BinaryS
 		return status.Errorf(codes.Internal, "failed to get object from MinIO: %v", err)
 	}
 	defer objReader.Close()
-	
+
 	const chunkSize = 4 * 1024 * 1024 // 4 MB
 	buf := make([]byte, chunkSize)
 	sequence := int32(0)

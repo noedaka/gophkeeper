@@ -58,6 +58,6 @@ func (s *BinaryServ) Upload(ctx context.Context, s3Key string, reader io.Reader,
 	return err
 }
 
-func (r *BinaryServ) GetKey(ctx context.Context, ID, userID int) (string, error)  {
+func (r *BinaryServ) GetKey(ctx context.Context, ID, userID int) (string, error) {
 	return r.repo.GetKey(ctx, ID, userID)
 }

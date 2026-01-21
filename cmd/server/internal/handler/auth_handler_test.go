@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"gophkeeper/cmd/server/internal/handler"
 	"gophkeeper/internal/config"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
-	"gophkeeper/cmd/server/internal/handler"
 )
 
 type mockUserService struct {
@@ -56,9 +56,9 @@ func TestHandler_RegisterUser(t *testing.T) {
 					return creds.Login == "testuser" && creds.Password == "testpass"
 				})).Return(42, nil)
 			},
-			wantUserID:  42,
-			wantErr:     false,
-			checkToken:  true,
+			wantUserID: 42,
+			wantErr:    false,
+			checkToken: true,
 		},
 		{
 			name:     "service error",
@@ -114,7 +114,7 @@ func TestHandler_RegisterUser(t *testing.T) {
 					assert.Equal(t, "42", claims["user_id"])
 					exp, ok := claims["exp"].(float64)
 					assert.True(t, ok)
-					expectedExp := float64(time.Now().Add(24*time.Hour).Unix())
+					expectedExp := float64(time.Now().Add(24 * time.Hour).Unix())
 					assert.GreaterOrEqual(t, exp, expectedExp-10)
 					assert.LessOrEqual(t, exp, expectedExp+10)
 				}
@@ -149,9 +149,9 @@ func TestHandler_AuthUser(t *testing.T) {
 					return creds.Login == "testuser" && creds.Password == "testpass"
 				})).Return(42, nil)
 			},
-			wantUserID:  42,
-			wantErr:     false,
-			checkToken:  true,
+			wantUserID: 42,
+			wantErr:    false,
+			checkToken: true,
 		},
 		{
 			name:     "service error",

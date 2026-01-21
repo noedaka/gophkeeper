@@ -33,11 +33,11 @@ type BinaryDetailModel struct {
 	menuItems    []string
 	cursor       int
 	loading      bool
-	downloadPath string 
+	downloadPath string
 }
 
-type BinaryDownloadedMsg struct{ 
-	Path string 
+type BinaryDownloadedMsg struct {
+	Path string
 }
 
 type BinaryDeletedMsg struct{}

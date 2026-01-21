@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"gophkeeper/cmd/server/internal/handler"
-	"gophkeeper/cmd/server/internal/interceptor" 
+	"gophkeeper/cmd/server/internal/interceptor"
 	"gophkeeper/internal/config"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
@@ -50,17 +50,17 @@ func TestHandler_StoreRecord(t *testing.T) {
 	h := handler.NewHandler(nil, mockRecordSvc, nil, &config.Config{})
 
 	tests := []struct {
-		name        string
-		ctx         context.Context
-		request     *proto.EncryptedRecord
-		mockSetup   func()
+		name         string
+		ctx          context.Context
+		request      *proto.EncryptedRecord
+		mockSetup    func()
 		wantRecordID int32
-		wantErr     bool
-		wantCode    codes.Code
+		wantErr      bool
+		wantCode     codes.Code
 	}{
 		{
-			name:    "success",
-			ctx:     ctxWithUserID(42),
+			name: "success",
+			ctx:  ctxWithUserID(42),
 			request: proto.EncryptedRecord_builder{
 				Ciphertext: []byte("encrypted data"),
 				Nonce:      []byte("nonce123"),
@@ -102,7 +102,7 @@ func TestHandler_StoreRecord(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRecordSvc.ExpectedCalls = nil 
+			mockRecordSvc.ExpectedCalls = nil
 			tt.mockSetup()
 
 			resp, err := h.StoreRecord(tt.ctx, tt.request)
@@ -158,9 +158,9 @@ func TestHandler_GetRecord(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "unauthenticated",
-			ctx:     context.Background(),
-			request: proto.RecordID_builder{}.Build(),
+			name:      "unauthenticated",
+			ctx:       context.Background(),
+			request:   proto.RecordID_builder{}.Build(),
 			mockSetup: func() {},
 			wantErr:   true,
 			wantCode:  codes.Unauthenticated,
@@ -240,9 +240,9 @@ func TestHandler_ListRecords(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "unauthenticated",
-			ctx:     context.Background(),
-			request: proto.ListRequest_builder{}.Build(),
+			name:      "unauthenticated",
+			ctx:       context.Background(),
+			request:   proto.ListRequest_builder{}.Build(),
 			mockSetup: func() {},
 			wantErr:   true,
 			wantCode:  codes.Unauthenticated,
@@ -305,9 +305,9 @@ func TestHandler_DeleteRecord(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "unauthenticated",
-			ctx:     context.Background(),
-			request: proto.RecordID_builder{}.Build(),
+			name:      "unauthenticated",
+			ctx:       context.Background(),
+			request:   proto.RecordID_builder{}.Build(),
 			mockSetup: func() {},
 			wantErr:   true,
 			wantCode:  codes.Unauthenticated,
@@ -339,7 +339,7 @@ func TestHandler_DeleteRecord(t *testing.T) {
 				assert.Nil(t, resp)
 			} else {
 				assert.NoError(t, err)
-				assert.NotNil(t, resp) 
+				assert.NotNil(t, resp)
 			}
 
 			mockRecordSvc.AssertExpectations(t)
@@ -348,4 +348,4 @@ func TestHandler_DeleteRecord(t *testing.T) {
 }
 
 func ptrString(s string) *string { return &s }
-func ptrInt32(i int32) *int32   { return &i }
+func ptrInt32(i int32) *int32    { return &i }

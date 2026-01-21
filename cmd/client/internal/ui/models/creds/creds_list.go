@@ -32,8 +32,8 @@ type CredsListModel struct {
 }
 
 type CredsLoadedMsg struct {
-		CredIDs []int32
-	}
+	CredIDs []int32
+}
 
 // NewCredsListModel создает новую модель пары логин/пароль
 func NewCredsListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CredsListModel {

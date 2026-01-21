@@ -31,11 +31,9 @@ type BinaryListModel struct {
 	errorMsg   string
 }
 
-
 type BinariesLoadedMsg struct {
 	Records []*proto.BinaryRecordInfo
 }
-
 
 func NewBinaryListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) BinaryListModel {
 	return BinaryListModel{

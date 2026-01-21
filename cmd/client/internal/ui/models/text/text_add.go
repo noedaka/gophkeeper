@@ -65,7 +65,7 @@ func (m AddTextModel) Init() tea.Cmd {
 	return nil
 }
 
-// Update обновляет состоние модели 
+// Update обновляет состоние модели
 func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -107,7 +107,7 @@ func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// moveCursor обрабатывает логику изменения курсора 
+// moveCursor обрабатывает логику изменения курсора
 func (m AddTextModel) moveCursor(backward bool) AddTextModel {
 	m = m.blurAll()
 
@@ -187,7 +187,7 @@ func (m AddTextModel) renderField(label string, fieldView string, index int) str
 	)
 }
 
-// sumbit обрабатыват нажатие кнопки отправить 
+// sumbit обрабатыват нажатие кнопки отправить
 func (m AddTextModel) submit() tea.Cmd {
 	plainText := &domain.Text{
 		Text:     m.text.Model.Value(),

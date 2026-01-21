@@ -29,7 +29,6 @@ type TextListModel struct {
 	errorMsg   string
 }
 
-
 type TextIDLoadedMsg struct {
 	textIDs []int32
 }

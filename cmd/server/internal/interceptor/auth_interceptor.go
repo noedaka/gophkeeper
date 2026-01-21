@@ -18,7 +18,7 @@ type Interceptor struct {
 	cfg config.Config
 }
 
-// NewInterceptor создает новый Interceptor 
+// NewInterceptor создает новый Interceptor
 func NewInterceptor(cfg config.Config) *Interceptor {
 	return &Interceptor{
 		cfg: cfg,

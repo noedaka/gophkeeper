@@ -39,7 +39,6 @@ type CardSelectedMsg struct {
 	CardID int32
 }
 
-
 // NewCardListModel создаёт новую модель списка карт
 func NewCardListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CardListModel {
 	m := CardListModel{

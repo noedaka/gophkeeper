@@ -24,5 +24,5 @@ type BinaryService interface {
 	List(ctx context.Context, userID int) ([]domain.BinaryRecord, error)
 	Delete(ctx context.Context, recordID int, userID int) error
 	Upload(ctx context.Context, s3Key string, reader io.Reader, size int64) error
-	GetKey(ctx context.Context, ID, userID int) (string, error) 
+	GetKey(ctx context.Context, ID, userID int) (string, error)
 }

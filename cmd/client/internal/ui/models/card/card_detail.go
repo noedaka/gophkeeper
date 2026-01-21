@@ -36,13 +36,11 @@ type CardDetailModel struct {
 	cursor    int
 }
 
-
 type CardLoadedMsg struct {
-		PlainCard *domain.Card
-		Metadata  string
-	}
+	PlainCard *domain.Card
+	Metadata  string
+}
 type CardDeleteConfirmMsg struct{}
-
 
 // NewCardDetailModel создаёт новую модель деталей карты
 func NewCardDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, cardID int32, nav navigation.Navigator) CardDetailModel {

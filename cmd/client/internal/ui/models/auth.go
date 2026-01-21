@@ -24,19 +24,16 @@ type AuthModel struct {
 	regPass    components.InputField
 	regConfirm components.InputField
 	submitBtn  string
-	cursorPos  int 
+	cursorPos  int
 }
 
-
-type SwitchTabMsg   string
+type SwitchTabMsg string
 
 type AuthSuccessMsg struct {
 	Token  string
 	UserID string
 	Login  string
 }
-
-
 
 // NewAuthModel создаёт новую модель аутентификации
 func NewAuthModel(grpcClient *grpcclient.GophKeeperClient) AuthModel {
@@ -248,7 +245,7 @@ func (m AuthModel) moveCursor(backward bool) AuthModel {
 	if backward {
 		m.cursorPos--
 		if m.cursorPos < 0 {
-			m.cursorPos = fieldCount 
+			m.cursorPos = fieldCount
 		}
 	} else {
 		m.cursorPos++

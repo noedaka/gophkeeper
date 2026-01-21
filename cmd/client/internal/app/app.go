@@ -39,9 +39,9 @@ func NewApp() *App {
 // Start запускает приложение
 func (a *App) Start() error {
 	p := tea.NewProgram(a.model,
-		tea.WithAltScreen(),   
-		tea.WithMouseCellMotion(), 
-		tea.WithFPS(60),           
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithFPS(60),
 	)
 
 	// Запускаем TUI

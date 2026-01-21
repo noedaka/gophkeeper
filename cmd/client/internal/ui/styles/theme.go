@@ -5,11 +5,11 @@ import (
 )
 
 var (
-	PrimaryColor   = lipgloss.Color("69") 
-	SecondaryColor = lipgloss.Color("245") 
-	SuccessColor   = lipgloss.Color("46")  
-	ErrorColor     = lipgloss.Color("160") 
-	WarningColor   = lipgloss.Color("214") 
+	PrimaryColor   = lipgloss.Color("69")
+	SecondaryColor = lipgloss.Color("245")
+	SuccessColor   = lipgloss.Color("46")
+	ErrorColor     = lipgloss.Color("160")
+	WarningColor   = lipgloss.Color("214")
 
 	AppStyle = lipgloss.NewStyle().
 			Padding(1, 2)
