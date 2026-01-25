@@ -3,6 +3,7 @@ package text
 import (
 	"context"
 	"fmt"
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	message "gophkeeper/cmd/client/internal/ui/models/messages"
@@ -22,6 +23,7 @@ type TextListModel struct {
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	textIDs    []int32
 	cursor     int
@@ -33,12 +35,13 @@ type TextIDLoadedMsg struct {
 	textIDs []int32
 }
 
-func NewTextListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) TextListModel {
+func NewTextListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) TextListModel {
 	m := TextListModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		crypt:      crypt,
 		nav:        nav,
 		grpcClient: grpcClient,
 		textIDs:    []int32{},
@@ -73,7 +76,7 @@ func (m TextListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.textIDs) > 0 && m.cursor < len(m.textIDs) {
 				credID := m.textIDs[m.cursor]
-				detailModel := NewTextDetailModel(m.token, m.userID, m.login, m.grpcClient, credID, m.nav)
+				detailModel := NewTextDetailModel(m.token, m.userID, m.login, m.grpcClient, credID, m.crypt, m.nav)
 				return detailModel, detailModel.Init()
 			}
 		case "r", "R":
@@ -81,7 +84,7 @@ func (m TextListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.errorMsg = ""
 			return m, m.loadText
 		case "esc":
-			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return textMenuModel, textMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:

@@ -25,7 +25,8 @@ type CardDetailModel struct {
 	grpcClient *grpcclient.GophKeeperClient
 	cardID     int32
 
-	nav navigation.Navigator
+	crypt *crypto.Crypt
+	nav   navigation.Navigator
 
 	plainCard *domain.Card
 	metadata  string
@@ -43,13 +44,14 @@ type CardLoadedMsg struct {
 type CardDeleteConfirmMsg struct{}
 
 // NewCardDetailModel создаёт новую модель деталей карты
-func NewCardDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, cardID int32, nav navigation.Navigator) CardDetailModel {
+func NewCardDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, cardID int32, crypt *crypto.Crypt, nav navigation.Navigator) CardDetailModel {
 	m := CardDetailModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		crypt:      crypt,
 		nav:        nav,
 		cardID:     cardID,
 		plainCard:  nil,
@@ -89,11 +91,11 @@ func (m CardDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				return m, m.deleteCard
 			case 1:
-				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return cardListModel, cardListModel.Init()
 			}
 		case "esc":
-			cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return cardListModel, cardListModel.Init()
 		}
 	case tea.WindowSizeMsg:
@@ -106,7 +108,7 @@ func (m CardDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMsg = msg.Error
 		m.loading = false
 	case CardDeleteConfirmMsg:
-		cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		cardListModel.SetError("Карта успешно удалена")
 		return cardListModel, cardListModel.Init()
 	}
@@ -214,7 +216,7 @@ func (m CardDetailModel) loadCard() tea.Msg {
 		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
 
-	plainBytes, err := crypto.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
+	plainBytes, err := m.crypt.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
 	if err != nil {
 		return message.ErrorMsg{Error: "Ошибка расшифровки данных"}
 	}

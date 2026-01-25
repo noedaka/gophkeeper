@@ -2,6 +2,7 @@ package text
 
 import (
 	"fmt"
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	"gophkeeper/cmd/client/internal/ui/navigation"
@@ -17,6 +18,7 @@ type TextMenuModel struct {
 	token      string
 	userID     string
 	login      string
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
@@ -24,12 +26,13 @@ type TextMenuModel struct {
 }
 
 // NewTextMenuModel создает новую модель меню работы с произвольным текстом
-func NewTextMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) TextMenuModel {
+func NewTextMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) TextMenuModel {
 	return TextMenuModel{
 		BaseModel: base.NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		crypt: crypt,
 		nav:       nav,
 		menuItems: []string{
 			"Добавить произвольный текст",
@@ -64,10 +67,10 @@ func (m TextMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			switch m.cursor {
 			case 0:
-				addTextModel := NewAddTextModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				addTextModel := NewAddTextModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return addTextModel, addTextModel.Init()
 			case 1:
-				credsListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				credsListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return credsListModel, credsListModel.Init()
 			case 2:
 				return m.nav.BackToMain()

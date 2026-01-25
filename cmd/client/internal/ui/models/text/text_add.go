@@ -26,6 +26,7 @@ type AddTextModel struct {
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
 
+	crypt    *crypto.Crypt
 	nav      navigation.Navigator
 	text     components.InputField
 	metadata components.InputField
@@ -39,13 +40,14 @@ type TextAddedMsg struct {
 }
 
 // NewAddTextModel создает новую модель добавления произвольного текста
-func NewAddTextModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddTextModel {
+func NewAddTextModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) AddTextModel {
 	m := AddTextModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		crypt:      crypt,
 		nav:        nav,
 
 		text:     components.NewInput("Текст", false),
@@ -85,13 +87,13 @@ func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.moveCursor(false)
 		case "esc":
-			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return textMenuModel, textMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case TextAddedMsg:
-		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient,m.crypt, m.nav)
 		textMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
 		return textMenuModel, textMenuModel.Init()
 	case message.ErrorMsg:
@@ -201,7 +203,7 @@ func (m AddTextModel) submit() tea.Cmd {
 		}
 	}
 
-	encrypted, nonce, err := crypto.Encrypt(plainBytes)
+	encrypted, nonce, err := m.crypt.Encrypt(plainBytes)
 	if err != nil {
 		return func() tea.Msg {
 			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}

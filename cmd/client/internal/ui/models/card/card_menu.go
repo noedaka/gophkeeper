@@ -2,6 +2,7 @@ package card
 
 import (
 	"fmt"
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	"gophkeeper/cmd/client/internal/ui/navigation"
@@ -17,6 +18,7 @@ type CardMenuModel struct {
 	token      string
 	userID     string
 	login      string
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
@@ -30,12 +32,13 @@ type (
 )
 
 // NewCardMenuModel создаёт новую модель меню карт
-func NewCardMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CardMenuModel {
+func NewCardMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) CardMenuModel {
 	return CardMenuModel{
 		BaseModel: base.NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		crypt:     crypt,
 		nav:       nav,
 		menuItems: []string{
 			"Добавить карту",
@@ -71,10 +74,10 @@ func (m CardMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			switch m.cursor {
 			case 0:
-				addCardModel := NewAddCardModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				addCardModel := NewAddCardModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return addCardModel, addCardModel.Init()
 			case 1:
-				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				cardListModel := NewCardListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return cardListModel, cardListModel.Init()
 			case 2:
 				return m.nav.BackToMain()

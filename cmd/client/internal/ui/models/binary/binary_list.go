@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	message "gophkeeper/cmd/client/internal/ui/models/messages"
@@ -24,6 +25,7 @@ type BinaryListModel struct {
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	records    []*proto.BinaryRecordInfo
 	cursor     int
@@ -35,12 +37,13 @@ type BinariesLoadedMsg struct {
 	Records []*proto.BinaryRecordInfo
 }
 
-func NewBinaryListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) BinaryListModel {
+func NewBinaryListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) BinaryListModel {
 	return BinaryListModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		crypt:      crypt,
 		nav:        nav,
 		grpcClient: grpcClient,
 		loading:    false,
@@ -70,7 +73,7 @@ func (m BinaryListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.records) > 0 {
 				rec := m.records[m.cursor]
-				return NewBinaryDetailModel(m.token, m.userID, m.login, m.grpcClient, rec.GetId(), rec.GetMetadata(), m.nav), nil
+				return NewBinaryDetailModel(m.token, m.userID, m.login, m.grpcClient, rec.GetId(), rec.GetMetadata(), m.crypt, m.nav), nil
 			}
 		case "r", "R":
 			m.loading = true
@@ -79,7 +82,7 @@ func (m BinaryListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.cursor = 0
 			return m, m.loadBinaries()
 		case "esc":
-			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav), nil
+			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav), nil
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)

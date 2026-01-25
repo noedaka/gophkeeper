@@ -25,6 +25,8 @@ type CredsDetailModel struct {
 	grpcClient *grpcclient.GophKeeperClient
 	credID     int32
 
+	crypt *crypto.Crypt
+
 	nav navigation.Navigator
 
 	plainCreds *domain.Creds
@@ -44,12 +46,13 @@ type CredLoadedMsg struct {
 type CredDeleteConfirmMsg struct{}
 
 // NewCredsMenuModel создаёт новую модель детализированных логинов/паролей
-func NewCredsDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, credID int32, nav navigation.Navigator) CredsDetailModel {
+func NewCredsDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, credID int32, crypt *crypto.Crypt, nav navigation.Navigator) CredsDetailModel {
 	m := CredsDetailModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		crypt:      crypt,
 		nav:        nav,
 		grpcClient: grpcClient,
 		credID:     credID,
@@ -89,11 +92,11 @@ func (m CredsDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				return m, m.deleteCred
 			case 1:
-				credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return credsListModel, credsListModel.Init()
 			}
 		case "esc":
-			credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return credsListModel, credsListModel.Init()
 		}
 	case tea.WindowSizeMsg:
@@ -106,7 +109,7 @@ func (m CredsDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMsg = msg.Error
 		m.loading = false
 	case CredDeleteConfirmMsg:
-		credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		credsListModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		credsListModel.SetError("Запись успешно удалена")
 		return credsListModel, credsListModel.Init()
 	}
@@ -212,7 +215,7 @@ func (m CredsDetailModel) loadCred() tea.Msg {
 		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
 
-	plainBytes, err := crypto.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
+	plainBytes, err := m.crypt.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
 	if err != nil {
 		return message.ErrorMsg{Error: "Ошибка расшифровки данных"}
 	}

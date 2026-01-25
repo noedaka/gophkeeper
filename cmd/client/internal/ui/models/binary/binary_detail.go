@@ -26,6 +26,7 @@ type BinaryDetailModel struct {
 	userID       string
 	login        string
 	grpcClient   *grpcclient.GophKeeperClient
+	crypt        *crypto.Crypt
 	nav          navigation.Navigator
 	recordID     int32
 	metadata     string
@@ -42,7 +43,7 @@ type BinaryDownloadedMsg struct {
 
 type BinaryDeletedMsg struct{}
 
-func NewBinaryDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, recordID int32, metadata string, nav navigation.Navigator) BinaryDetailModel {
+func NewBinaryDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, recordID int32, metadata string, crypt *crypto.Crypt, nav navigation.Navigator) BinaryDetailModel {
 	suggestedPath := metadata
 	if suggestedPath == "" {
 		suggestedPath = fmt.Sprintf("file_%d.bin", recordID)
@@ -53,6 +54,7 @@ func NewBinaryDetailModel(token, userID, login string, grpcClient *grpcclient.Go
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		crypt:      crypt,
 		nav:        nav,
 		recordID:   recordID,
 		metadata:   metadata,
@@ -101,10 +103,10 @@ func (m BinaryDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.loading = true
 				return m, m.deleteFile()
 			case 2:
-				return NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav), NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav).Init()
+				return NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav), NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav).Init()
 			}
 		case "esc":
-			return NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav), nil
+			return NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav), nil
 		case "tab":
 			if m.savePath.Focused {
 				m.savePath = m.savePath.Blur()
@@ -116,7 +118,7 @@ func (m BinaryDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateSize(msg)
 	case BinaryDownloadedMsg:
 		m.loading = false
-		listModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		listModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		listModel.SetError(fmt.Sprintf("Файл успешно скачан: %s", msg.Path))
 		return listModel, listModel.Init()
 	case message.ErrorMsg:
@@ -124,7 +126,7 @@ func (m BinaryDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetError(msg.Error)
 	case BinaryDeletedMsg:
 		m.loading = false
-		listModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		listModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		listModel.SetError("Файл успешно удалён")
 		return listModel, listModel.Init()
 	}
@@ -225,7 +227,7 @@ func (m BinaryDetailModel) downloadFile(savePath string) tea.Cmd {
 			nonce := data[:nonceSize]
 			ciphertext := data[nonceSize:]
 
-			plain, decErr := crypto.Decrypt(ciphertext, nonce)
+			plain, decErr := m.crypt.Decrypt(ciphertext, nonce)
 			if decErr != nil {
 				return message.ErrorMsg{Error: fmt.Sprintf("Ошибка расшифровки: %v", decErr)}
 			}

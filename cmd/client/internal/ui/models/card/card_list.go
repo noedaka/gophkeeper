@@ -3,6 +3,7 @@ package card
 import (
 	"context"
 	"fmt"
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	message "gophkeeper/cmd/client/internal/ui/models/messages"
@@ -23,7 +24,8 @@ type CardListModel struct {
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
 
-	nav navigation.Navigator
+	crypt *crypto.Crypt
+	nav   navigation.Navigator
 
 	cardIDs  []int32
 	cursor   int
@@ -40,12 +42,13 @@ type CardSelectedMsg struct {
 }
 
 // NewCardListModel создаёт новую модель списка карт
-func NewCardListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CardListModel {
+func NewCardListModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) CardListModel {
 	m := CardListModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		crypt:      crypt,
 		nav:        nav,
 		grpcClient: grpcClient,
 		cardIDs:    []int32{},
@@ -84,7 +87,7 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.cardIDs) > 0 && m.cursor < len(m.cardIDs) {
 				cardID := m.cardIDs[m.cursor]
-				cardDetailModel := NewCardDetailModel(m.token, m.userID, m.login, m.grpcClient, cardID, m.nav)
+				cardDetailModel := NewCardDetailModel(m.token, m.userID, m.login, m.grpcClient, cardID, m.crypt, m.nav)
 				return cardDetailModel, cardDetailModel.Init()
 			}
 		case "r", "R":
@@ -92,7 +95,7 @@ func (m CardListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.errorMsg = ""
 			return m, m.loadCards
 		case "esc":
-			cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			cardMenuModel := NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return cardMenuModel, cardMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:

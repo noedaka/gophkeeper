@@ -29,6 +29,7 @@ type AddBinaryModel struct {
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 
 	pathInput components.InputField
@@ -44,13 +45,14 @@ type BinaryAddedMsg struct {
 	ID int32
 }
 
-func NewAddBinaryModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddBinaryModel {
+func NewAddBinaryModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) AddBinaryModel {
 	m := AddBinaryModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		crypt:      crypt,
 		nav:        nav,
 		pathInput:  components.NewInput("Полный путь к файлу (C:\\... или /...)", false),
 		metadata:   components.NewInput("Метка/Описание (опционально)", false),
@@ -71,7 +73,7 @@ func (m AddBinaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "esc" {
-			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav), nil
+			return NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav), nil
 		}
 		if msg.String() == "enter" && m.fileExists {
 			m.loading = true
@@ -89,7 +91,7 @@ func (m AddBinaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case BinaryAddedMsg:
-		menu := NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		menu := NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		menu.SetError(fmt.Sprintf("Файл успешно загружен (ID: %d)", msg.ID))
 		return menu, nil
 	case message.ErrorMsg:
@@ -237,7 +239,7 @@ func (m AddBinaryModel) uploadFile() tea.Cmd {
 				continue
 			}
 
-			encrypted, nonce, encErr := crypto.Encrypt(plainChunk)
+			encrypted, nonce, encErr := m.crypt.Encrypt(plainChunk)
 			if encErr != nil {
 				return message.ErrorMsg{Error: fmt.Sprintf("Ошибка шифрования: %v", encErr)}
 			}

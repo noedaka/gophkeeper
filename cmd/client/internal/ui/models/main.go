@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	"gophkeeper/cmd/client/internal/ui/models/binary"
@@ -20,11 +21,12 @@ type mainNav struct {
 	token      string
 	userID     string
 	login      string
+	password   string
 	grpcClient *grpcclient.GophKeeperClient
 }
 
 func (n mainNav) BackToMain() (tea.Model, tea.Cmd) {
-	return NewMainModel(n.token, n.userID, n.login, n.grpcClient), nil
+	return NewMainModel(n.token, n.userID, n.login, n.password, n.grpcClient), nil
 }
 
 // MainModel - главный экран после успешной аутентификации
@@ -33,17 +35,19 @@ type MainModel struct {
 	token      string
 	userID     string
 	login      string
+	password   string
 	grpcClient *grpcclient.GophKeeperClient
 	menuItems  []string
 	cursor     int
 }
 
-func NewMainModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient) MainModel {
+func NewMainModel(token, userID, login, password string, grpcClient *grpcclient.GophKeeperClient) MainModel {
 	return MainModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		password:   password,
 		grpcClient: grpcClient,
 		menuItems: []string{
 			"Логины/Пароли",
@@ -80,6 +84,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", " ":
+			crypt := crypto.NewCrypt(m.password, m.login)
+
 			nav := mainNav{
 				token:      m.token,
 				userID:     m.userID,
@@ -89,16 +95,16 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch m.cursor {
 			case 0:
-				credsMenuModel := creds.NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, nav)
+				credsMenuModel := creds.NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, crypt, nav)
 				return credsMenuModel, credsMenuModel.Init()
 			case 1:
-				cardMenuModel := card.NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, nav)
+				cardMenuModel := card.NewCardMenuModel(m.token, m.userID, m.login, m.grpcClient, crypt, nav)
 				return cardMenuModel, cardMenuModel.Init()
 			case 2:
-				textMenuModel := text.NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, nav)
+				textMenuModel := text.NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, crypt, nav)
 				return textMenuModel, textMenuModel.Init()
 			case 3:
-				binaryMenuModel := binary.NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, nav)
+				binaryMenuModel := binary.NewBinaryMenuModel(m.token, m.userID, m.login, m.grpcClient, crypt, nav)
 				return binaryMenuModel, binaryMenuModel.Init()
 			case 4:
 				authModel := NewAuthModel(m.grpcClient)

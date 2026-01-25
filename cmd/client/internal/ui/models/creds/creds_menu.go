@@ -2,6 +2,7 @@ package creds
 
 import (
 	"fmt"
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	"gophkeeper/cmd/client/internal/ui/navigation"
@@ -17,6 +18,7 @@ type CredsMenuModel struct {
 	token      string
 	userID     string
 	login      string
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
@@ -24,12 +26,13 @@ type CredsMenuModel struct {
 }
 
 // NewCredsMenuModel создаёт новую модель меню логинов/паролей
-func NewCredsMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) CredsMenuModel {
+func NewCredsMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) CredsMenuModel {
 	return CredsMenuModel{
 		BaseModel: base.NewBaseModel(),
 		token:     token,
 		userID:    userID,
 		login:     login,
+		crypt:     crypt,
 		nav:       nav,
 		menuItems: []string{
 			"Добавить логин/пароль",
@@ -65,10 +68,10 @@ func (m CredsMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter", " ":
 			switch m.cursor {
 			case 0:
-				addCredsModel := NewAddCredsModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				addCredsModel := NewAddCredsModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return addCredsModel, addCredsModel.Init()
 			case 1:
-				listCredModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				listCredModel := NewCredsListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return listCredModel, listCredModel.Init()
 			case 2:
 				return m.nav.BackToMain()

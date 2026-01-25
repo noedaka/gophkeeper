@@ -25,6 +25,7 @@ type TextDetailModel struct {
 	grpcClient *grpcclient.GophKeeperClient
 	credID     int32
 
+	crypt     *crypto.Crypt
 	nav       navigation.Navigator
 	plainText *domain.Text
 	metadata  string
@@ -43,12 +44,13 @@ type TextLoadedMsg struct {
 type TextDeleteConfirmMsg struct{}
 
 // NewTextDetailModel создает новую модель
-func NewTextDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, credID int32, nav navigation.Navigator) TextDetailModel {
+func NewTextDetailModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, credID int32, crypt *crypto.Crypt, nav navigation.Navigator) TextDetailModel {
 	m := TextDetailModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
+		crypt:      crypt,
 		nav:        nav,
 		grpcClient: grpcClient,
 		credID:     credID,
@@ -88,11 +90,11 @@ func (m TextDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case 0:
 				return m, m.deleteText
 			case 1:
-				textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return textListModel, textListModel.Init()
 			}
 		case "esc":
-			textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return textListModel, textListModel.Init()
 		}
 	case tea.WindowSizeMsg:
@@ -105,7 +107,7 @@ func (m TextDetailModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.errorMsg = msg.Error
 		m.loading = false
 	case TextDeleteConfirmMsg:
-		textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		textListModel := NewTextListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		textListModel.SetError("Запись успешно удалена")
 		return textListModel, textListModel.Init()
 	}
@@ -209,7 +211,7 @@ func (m TextDetailModel) loadText() tea.Msg {
 		return message.ErrorMsg{Error: fmt.Sprintf("Ошибка загрузки: %v", err)}
 	}
 
-	plainBytes, err := crypto.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
+	plainBytes, err := m.crypt.Decrypt(encRec.GetCiphertext(), encRec.GetNonce())
 	if err != nil {
 		return message.ErrorMsg{Error: "Ошибка расшифровки данных"}
 	}

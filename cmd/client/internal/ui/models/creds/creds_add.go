@@ -28,7 +28,8 @@ type AddCredsModel struct {
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
 
-	nav navigation.Navigator
+	crypt *crypto.Crypt
+	nav   navigation.Navigator
 
 	username components.InputField
 	password components.InputField
@@ -44,7 +45,7 @@ type CredsAddedMsg struct {
 }
 
 // NewCredsMenuModel создаёт новую модель формы добавления логинов/паролей
-func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) AddCredsModel {
+func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) AddCredsModel {
 	m := AddCredsModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
@@ -52,7 +53,8 @@ func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKe
 		login:      login,
 		grpcClient: grpcClient,
 
-		nav: nav,
+		crypt: crypt,
+		nav:   nav,
 
 		username: components.NewInput("Логин/Email", false),
 		password: components.NewInput("Пароль", true),
@@ -93,13 +95,13 @@ func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m = m.moveCursor(false)
 		case "esc":
-			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 			return credsMenuModel, credsMenuModel.Init()
 		}
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case CredsAddedMsg:
-		credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+		credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		credsMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
 		return credsMenuModel, credsMenuModel.Init()
 	case message.ErrorMsg:
@@ -225,7 +227,7 @@ func (m AddCredsModel) submit() tea.Cmd {
 		}
 	}
 
-	encrypted, nonce, err := crypto.Encrypt(plainBytes)
+	encrypted, nonce, err := m.crypt.Encrypt(plainBytes)
 	if err != nil {
 		return func() tea.Msg {
 			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}

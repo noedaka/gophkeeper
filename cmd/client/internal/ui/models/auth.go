@@ -30,9 +30,10 @@ type AuthModel struct {
 type SwitchTabMsg string
 
 type AuthSuccessMsg struct {
-	Token  string
-	UserID string
-	Login  string
+	Token    string
+	UserID   string
+	Login    string
+	Password string
 }
 
 // NewAuthModel создаёт новую модель аутентификации
@@ -102,7 +103,7 @@ func (m AuthModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SetError(msg.Error)
 
 	case AuthSuccessMsg:
-		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login, m.grpcClient)
+		mainModel := NewMainModel(msg.Token, msg.UserID, msg.Login, msg.Password, m.grpcClient)
 		return mainModel, mainModel.Init()
 	}
 
@@ -347,8 +348,9 @@ func (m AuthModel) login() tea.Cmd {
 		}
 
 		return AuthSuccessMsg{
-			Token: token,
-			Login: login,
+			Token:    token,
+			Login:    login,
+			Password: password,
 		}
 	}
 }
@@ -390,8 +392,9 @@ func (m AuthModel) register() tea.Cmd {
 		}
 
 		return AuthSuccessMsg{
-			Token: token,
-			Login: login,
+			Token:    token,
+			Login:    login,
+			Password: password,
 		}
 	}
 }

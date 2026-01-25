@@ -1,6 +1,7 @@
 package binary
 
 import (
+	"gophkeeper/cmd/client/internal/crypto"
 	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
 	"gophkeeper/cmd/client/internal/ui/models/base"
 	"gophkeeper/cmd/client/internal/ui/navigation"
@@ -17,18 +18,20 @@ type BinaryMenuModel struct {
 	userID     string
 	login      string
 	grpcClient *grpcclient.GophKeeperClient
+	crypt      *crypto.Crypt
 	nav        navigation.Navigator
 	menuItems  []string
 	cursor     int
 }
 
-func NewBinaryMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, nav navigation.Navigator) BinaryMenuModel {
+func NewBinaryMenuModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) BinaryMenuModel {
 	return BinaryMenuModel{
 		BaseModel:  base.NewBaseModel(),
 		token:      token,
 		userID:     userID,
 		login:      login,
 		grpcClient: grpcClient,
+		crypt:      crypt,
 		nav:        nav,
 		menuItems: []string{
 			"Загрузить файл",
@@ -64,9 +67,9 @@ func (m BinaryMenuModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.cursor {
 			case 0:
-				return NewAddBinaryModel(m.token, m.userID, m.login, m.grpcClient, m.nav), nil
+				return NewAddBinaryModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav), nil
 			case 1:
-				binaryListModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.nav)
+				binaryListModel := NewBinaryListModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 				return binaryListModel, binaryListModel.Init()
 			case 2:
 				return m.nav.BackToMain()
