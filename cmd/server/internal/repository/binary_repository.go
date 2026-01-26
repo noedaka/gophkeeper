@@ -28,12 +28,12 @@ func NewBinaryRepo(db *sql.DB, minioClient *minio.Client, cfg config.Config) *Bi
 }
 
 // generateS3Key генерирует уникальный ключ для объекта в MinIO
-func (r *BinaryRepo) generateS3Key(userID, recordID int) string {
-	return fmt.Sprintf("binary/%d/%d.bin.enc", userID, recordID)
+func (r *BinaryRepo) generateS3Key(userID string, recordID int) string {
+	return fmt.Sprintf("binary/%s/%d.bin.enc", userID, recordID)
 }
 
 // CreateRecord создаёт запись в БД и возвращает ID + финальный S3 ключ для upload
-func (r *BinaryRepo) Create(ctx context.Context, userID int, metadata string) (int, string, error) {
+func (r *BinaryRepo) Create(ctx context.Context, userID string, metadata string) (int, string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, "", err
@@ -41,7 +41,7 @@ func (r *BinaryRepo) Create(ctx context.Context, userID int, metadata string) (i
 	defer tx.Rollback()
 
 	// Генерируем временный уникальный s3_key (чтобы удовлетворить NOT NULL + UNIQUE при INSERT)
-	tempKey := fmt.Sprintf("pending/%d/%d", userID, time.Now().UnixNano())
+	tempKey := fmt.Sprintf("pending/%s/%d", userID, time.Now().UnixNano())
 
 	var id int
 	err = tx.QueryRowContext(ctx,
@@ -71,7 +71,7 @@ func (r *BinaryRepo) Create(ctx context.Context, userID int, metadata string) (i
 	return id, s3Key, nil
 }
 
-func (r *BinaryRepo) GetKey(ctx context.Context, ID, userID int) (string, error) {
+func (r *BinaryRepo) GetKey(ctx context.Context, ID int, userID string) (string, error) {
 	var s3Key string
 	err := r.db.QueryRowContext(ctx,
 		`SELECT s3_key
@@ -87,7 +87,7 @@ func (r *BinaryRepo) GetKey(ctx context.Context, ID, userID int) (string, error)
 }
 
 // List возвращает список бинарных записей пользователя
-func (r *BinaryRepo) List(ctx context.Context, userID int) ([]domain.BinaryRecord, error) {
+func (r *BinaryRepo) List(ctx context.Context, userID string) ([]domain.BinaryRecord, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, metadata, s3_key FROM binary_records WHERE user_id = $1 ORDER BY id ASC`,
 		userID,
@@ -114,7 +114,7 @@ func (r *BinaryRepo) List(ctx context.Context, userID int) ([]domain.BinaryRecor
 }
 
 // Delete удаляет объект из БД и из хранилища MinIO
-func (r *BinaryRepo) Delete(ctx context.Context, recordID int, userID int) error {
+func (r *BinaryRepo) Delete(ctx context.Context, recordID int, userID string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

@@ -3,7 +3,6 @@ package interceptor
 import (
 	"context"
 	"gophkeeper/internal/config"
-	"strconv"
 	"strings"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -74,25 +73,20 @@ func (s *authServerStream) Context() context.Context {
 	return s.ctx
 }
 
-func (i *Interceptor) authenticate(ctx context.Context) (int, error) {
+func (i *Interceptor) authenticate(ctx context.Context) (string, error) {
 	tokenString, err := i.extractTokenFromContext(ctx)
 	if err != nil {
-		return 0, status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
+		return "", status.Errorf(codes.Unauthenticated, "authentication failed: %v", err)
 	}
 
 	claims, err := i.validateJWT(tokenString)
 	if err != nil {
-		return 0, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
+		return "", status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 	}
 
-	userIDStr, ok := claims["user_id"].(string)
-	if !ok || userIDStr == "" {
-		return 0, status.Errorf(codes.Unauthenticated, "token missing user_id claim")
-	}
-
-	userID, err := strconv.Atoi(userIDStr)
-	if err != nil || userID == 0 {
-		return 0, status.Errorf(codes.Unauthenticated, "invalid user_id in token")
+	userID, ok := claims["user_id"].(string)
+	if !ok || userID == "" {
+		return "", status.Errorf(codes.Unauthenticated, "token missing user_id claim")
 	}
 
 	return userID, nil

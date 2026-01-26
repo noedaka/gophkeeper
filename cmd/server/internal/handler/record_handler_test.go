@@ -26,22 +26,22 @@ func (m *mockRecordService) Create(ctx context.Context, record *domain.Record) (
 	return args.Int(0), args.Error(1)
 }
 
-func (m *mockRecordService) Get(ctx context.Context, id int, userID int) (*domain.Record, error) {
+func (m *mockRecordService) Get(ctx context.Context, id int, userID string) (*domain.Record, error) {
 	args := m.Called(ctx, id, userID)
 	return args.Get(0).(*domain.Record), args.Error(1)
 }
 
-func (m *mockRecordService) List(ctx context.Context, userID int, recordType string) ([]domain.RecordInfo, error) {
+func (m *mockRecordService) List(ctx context.Context, userID string, recordType string) ([]domain.RecordInfo, error) {
 	args := m.Called(ctx, userID, recordType)
 	return args.Get(0).([]domain.RecordInfo), args.Error(1)
 }
 
-func (m *mockRecordService) Delete(ctx context.Context, id int, userID int) error {
+func (m *mockRecordService) Delete(ctx context.Context, id int, userID string) error {
 	args := m.Called(ctx, id, userID)
 	return args.Error(0)
 }
 
-func ctxWithUserID(userID int) context.Context {
+func ctxWithUserID(userID string) context.Context {
 	return context.WithValue(context.Background(), interceptor.UserIDKey{}, userID)
 }
 
@@ -60,7 +60,7 @@ func TestHandler_StoreRecord(t *testing.T) {
 	}{
 		{
 			name: "success",
-			ctx:  ctxWithUserID(42),
+			ctx:  ctxWithUserID("42"),
 			request: proto.EncryptedRecord_builder{
 				Ciphertext: []byte("encrypted data"),
 				Nonce:      []byte("nonce123"),
@@ -69,7 +69,7 @@ func TestHandler_StoreRecord(t *testing.T) {
 			}.Build(),
 			mockSetup: func() {
 				mockRecordSvc.On("Create", mock.Anything, mock.MatchedBy(func(r *domain.Record) bool {
-					return r.UserID == 42 &&
+					return r.UserID == "42" &&
 						string(r.Ciphertext) == "encrypted data" &&
 						string(r.Nonce) == "nonce123" &&
 						r.Metadata == "meta" &&
@@ -90,7 +90,7 @@ func TestHandler_StoreRecord(t *testing.T) {
 		},
 		{
 			name:    "service error",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.EncryptedRecord_builder{}.Build(),
 			mockSetup: func() {
 				mockRecordSvc.On("Create", mock.Anything, mock.Anything).Return(0, errors.New("db error"))
@@ -139,10 +139,10 @@ func TestHandler_GetRecord(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.RecordID_builder{Id: ptrInt32(100)}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("Get", mock.Anything, 100, 42).Return(&domain.Record{
+				mockRecordSvc.On("Get", mock.Anything, 100, "42").Return(&domain.Record{
 					Ciphertext: []byte("encrypted"),
 					Nonce:      []byte("nonce"),
 					Metadata:   "meta",
@@ -167,10 +167,10 @@ func TestHandler_GetRecord(t *testing.T) {
 		},
 		{
 			name:    "service error",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.RecordID_builder{Id: ptrInt32(999)}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("Get", mock.Anything, 999, 42).Return((*domain.Record)(nil), errors.New("not found"))
+				mockRecordSvc.On("Get", mock.Anything, 999, "42").Return((*domain.Record)(nil), errors.New("not found"))
 			},
 			wantErr:  true,
 			wantCode: codes.Internal,
@@ -218,10 +218,10 @@ func TestHandler_ListRecords(t *testing.T) {
 	}{
 		{
 			name:    "success with records",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.ListRequest_builder{RecordType: ptrString("text")}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("List", mock.Anything, 42, "text").Return([]domain.RecordInfo{
+				mockRecordSvc.On("List", mock.Anything, "42", "text").Return([]domain.RecordInfo{
 					{ID: 1, Metadata: "meta1", RecordType: "text"},
 					{ID: 2, Metadata: "meta2", RecordType: "text"},
 				}, nil)
@@ -231,10 +231,10 @@ func TestHandler_ListRecords(t *testing.T) {
 		},
 		{
 			name:    "success empty list",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.ListRequest_builder{}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("List", mock.Anything, 42, "").Return([]domain.RecordInfo{}, nil)
+				mockRecordSvc.On("List", mock.Anything, "42", "").Return([]domain.RecordInfo{}, nil)
 			},
 			wantLen: 0,
 			wantErr: false,
@@ -249,10 +249,10 @@ func TestHandler_ListRecords(t *testing.T) {
 		},
 		{
 			name:    "service error",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.ListRequest_builder{}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("List", mock.Anything, 42, "").Return([]domain.RecordInfo{}, errors.New("db error"))
+				mockRecordSvc.On("List", mock.Anything, "42", "").Return([]domain.RecordInfo{}, errors.New("db error"))
 			},
 			wantErr:  true,
 			wantCode: codes.Internal,
@@ -297,10 +297,10 @@ func TestHandler_DeleteRecord(t *testing.T) {
 	}{
 		{
 			name:    "success",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.RecordID_builder{Id: ptrInt32(100)}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("Delete", mock.Anything, 100, 42).Return(nil)
+				mockRecordSvc.On("Delete", mock.Anything, 100, "42").Return(nil)
 			},
 			wantErr: false,
 		},
@@ -314,10 +314,10 @@ func TestHandler_DeleteRecord(t *testing.T) {
 		},
 		{
 			name:    "service error",
-			ctx:     ctxWithUserID(42),
+			ctx:     ctxWithUserID("42"),
 			request: proto.RecordID_builder{Id: ptrInt32(999)}.Build(),
 			mockSetup: func() {
-				mockRecordSvc.On("Delete", mock.Anything, 999, 42).Return(errors.New("not found"))
+				mockRecordSvc.On("Delete", mock.Anything, 999, "42").Return(errors.New("not found"))
 			},
 			wantErr:  true,
 			wantCode: codes.Internal,

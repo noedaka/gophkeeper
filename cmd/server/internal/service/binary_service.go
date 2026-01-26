@@ -24,7 +24,7 @@ func NewBinaryServ(repo repository.BinaryRepository, minioClient *minio.Client, 
 	}
 }
 
-func (s *BinaryServ) Create(ctx context.Context, userID int, metadata string) (int, string, error) {
+func (s *BinaryServ) Create(ctx context.Context, userID string, metadata string) (int, string, error) {
 	return s.repo.Create(ctx, userID, metadata)
 }
 
@@ -43,11 +43,11 @@ func (s *BinaryServ) Get(ctx context.Context, s3Key string) (io.ReadCloser, int6
 	return obj, stat.Size, nil
 }
 
-func (s *BinaryServ) List(ctx context.Context, userID int) ([]domain.BinaryRecord, error) {
+func (s *BinaryServ) List(ctx context.Context, userID string) ([]domain.BinaryRecord, error) {
 	return s.repo.List(ctx, userID)
 }
 
-func (s *BinaryServ) Delete(ctx context.Context, recordID int, userID int) error {
+func (s *BinaryServ) Delete(ctx context.Context, recordID int, userID string) error {
 	return s.repo.Delete(ctx, recordID, userID)
 }
 
@@ -58,6 +58,6 @@ func (s *BinaryServ) Upload(ctx context.Context, s3Key string, reader io.Reader,
 	return err
 }
 
-func (r *BinaryServ) GetKey(ctx context.Context, ID, userID int) (string, error) {
+func (r *BinaryServ) GetKey(ctx context.Context, ID int, userID string) (string, error) {
 	return r.repo.GetKey(ctx, ID, userID)
 }

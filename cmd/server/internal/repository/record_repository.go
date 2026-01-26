@@ -53,7 +53,7 @@ func (r *RecordRepo) Create(ctx context.Context, record *domain.Record) (int, er
 }
 
 // Get получает полную зашифрованную запись по ID с проверкой владения
-func (r *RecordRepo) Get(ctx context.Context, recordID int, userID int) (*domain.Record, error) {
+func (r *RecordRepo) Get(ctx context.Context, recordID int, userID string) (*domain.Record, error) {
 	var rec domain.Record
 	err := r.db.QueryRowContext(ctx,
 		`SELECT id, user_id, ciphertext, nonce, metadata, record_type
@@ -76,7 +76,7 @@ func (r *RecordRepo) Get(ctx context.Context, recordID int, userID int) (*domain
 }
 
 // List возвращает список упрощённой информации о записях пользователя
-func (r *RecordRepo) List(ctx context.Context, userID int, recordType string) ([]domain.RecordInfo, error) {
+func (r *RecordRepo) List(ctx context.Context, userID string, recordType string) ([]domain.RecordInfo, error) {
 	rows, err := r.db.QueryContext(ctx,
 		`SELECT id, metadata, record_type 
         FROM records WHERE user_id = $1 
@@ -107,7 +107,7 @@ func (r *RecordRepo) List(ctx context.Context, userID int, recordType string) ([
 }
 
 // Delete удаляет запись по ID с проверкой владения
-func (r *RecordRepo) Delete(ctx context.Context, recordID int, userID int) error {
+func (r *RecordRepo) Delete(ctx context.Context, recordID int, userID string) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

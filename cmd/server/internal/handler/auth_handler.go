@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
 	"time"
@@ -25,7 +24,7 @@ func (h *Handler) RegisterUser(ctx context.Context, r *proto.RegisterRequest) (*
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": fmt.Sprintf("%v", userID),
+		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
@@ -55,7 +54,7 @@ func (h *Handler) AuthUser(ctx context.Context, r *proto.AuthRequest) (*proto.Au
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": fmt.Sprintf("%v", userID),
+		"user_id": userID,
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 

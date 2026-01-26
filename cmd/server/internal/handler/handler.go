@@ -29,10 +29,10 @@ func NewHandler(userService service.UserService, recordService service.RecordSer
 	}
 }
 
-func getUserIDFromContext(ctx context.Context) (int, bool) {
-	userID, ok := ctx.Value(interceptor.UserIDKey{}).(int)
-	if !ok || userID == 0 {
-		return 0, false
+func getUserIDFromContext(ctx context.Context) (string, bool) {
+	userID, ok := ctx.Value(interceptor.UserIDKey{}).(string)
+	if !ok || userID == "" {
+		return "", false
 	}
 	return userID, true
 }

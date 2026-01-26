@@ -7,7 +7,7 @@ type Record struct {
 	Nonce      []byte `db:"nonce"`
 	Metadata   string `db:"metadata"`
 	RecordType string `db:"record_type"`
-	UserID     int    `db:"user_id"`
+	UserID     string `db:"user_id"`
 }
 
 // RecordInfo упрощённая структура для списка записей. Возвращается в List-операциях

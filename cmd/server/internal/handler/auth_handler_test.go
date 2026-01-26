@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"fmt"
 	"context"
 	"errors"
 	"testing"
@@ -22,14 +23,14 @@ type mockUserService struct {
 	mock.Mock
 }
 
-func (m *mockUserService) Register(ctx context.Context, creds *domain.UserCredentials) (int, error) {
+func (m *mockUserService) Register(ctx context.Context, creds *domain.UserCredentials) (string, error) {
 	args := m.Called(ctx, creds)
-	return args.Int(0), args.Error(1)
+	return fmt.Sprint(args.Int(0)), args.Error(1)
 }
 
-func (m *mockUserService) Login(ctx context.Context, creds *domain.UserCredentials) (int, error) {
+func (m *mockUserService) Login(ctx context.Context, creds *domain.UserCredentials) (string, error) {
 	args := m.Called(ctx, creds)
-	return args.Int(0), args.Error(1)
+	return fmt.Sprint(args.Int(0)), args.Error(1)
 }
 
 func TestHandler_RegisterUser(t *testing.T) {

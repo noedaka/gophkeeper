@@ -19,10 +19,10 @@ func NewUserRepo(db *sql.DB) *UserRepo {
 }
 
 // Create создает пользователя в бд
-func (repo *UserRepo) Create(ctx context.Context, user *domain.UserCredentials) (int, error) {
+func (repo *UserRepo) Create(ctx context.Context, user *domain.UserCredentials) (string, error) {
 	tx, err := repo.db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	defer func() {
@@ -33,49 +33,45 @@ func (repo *UserRepo) Create(ctx context.Context, user *domain.UserCredentials) 
 		}
 	}()
 
-	isFree, err := repo.isLoginFree(ctx, user.Login)
+	err = repo.isLoginFree(ctx, user.Login)
 	if err != nil {
-		return 0, err
-	}
-
-	if !isFree {
-		return 0, model.ErrOccupiedLogin
+		return "", err
 	}
 
 	hashedPassword, err := auth.HashPassword(user.Password)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
-	var userID int
+	var userID string
 	err = tx.QueryRowContext(ctx,
 		"INSERT INTO users (login, password) VALUES ($1, $2) RETURNING id",
 		user.Login, hashedPassword).Scan(&userID)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return 0, err
+		return "", err
 	}
 
 	return userID, nil
 }
 
 // GetIDByCreds получает ID пользователя по данным пользователя
-func (repo *UserRepo) GetIDByCreds(ctx context.Context, user *domain.UserCredentials) (int, error) {
+func (repo *UserRepo) GetIDByCreds(ctx context.Context, user *domain.UserCredentials) (string, error) {
 	var userFromDB domain.UserCredentials
-	var userID int
+	var userID string
 	err := repo.db.QueryRowContext(ctx,
 		"SELECT id, password FROM users WHERE login = $1", user.Login,
 	).Scan(&userID, &userFromDB.Password)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, model.ErrNoUser
+			return "", model.ErrNoUser
 		}
 
-		return 0, err
+		return "", err
 	}
 
 	isPasswordCorrect := auth.CheckPasswordHash(user.Password, userFromDB.Password)
@@ -83,21 +79,21 @@ func (repo *UserRepo) GetIDByCreds(ctx context.Context, user *domain.UserCredent
 		return userID, nil
 	}
 
-	return 0, model.ErrIncorrectPass
+	return "", model.ErrIncorrectPass
 }
 
-func (repo *UserRepo) isLoginFree(ctx context.Context, login string) (bool, error) {
+func (repo *UserRepo) isLoginFree(ctx context.Context, login string) error {
 	var count int
 	err := repo.db.QueryRowContext(ctx,
 		"SELECT COUNT(*) FROM users WHERE login = $1", login,
 	).Scan(&count)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if count == 1 {
-		return false, nil
+		return model.ErrOccupiedLogin
 	} else {
-		return true, nil
+		return nil
 	}
 }
