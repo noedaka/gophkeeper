@@ -8,16 +8,24 @@ import (
 	"os"
 )
 
+var (
+    buildVersion = "N/A"
+    buildDate    = "N/A"
+    buildCommit  = "N/A"
+)
+
 func main() {
 	versionFlag := flag.Bool("version", false, "Показать версию")
 	helpFlag := flag.Bool("help", false, "Показать справку")
 
 	flag.Parse()
-
-	if *versionFlag {
-		fmt.Println(app.VersionInfo())
-		os.Exit(0)
-	}
+    if *versionFlag {
+        fmt.Printf("GophKeeper Client\n")
+        fmt.Printf("Version: %s\n", buildVersion)
+        fmt.Printf("Build date: %s\n", buildDate)
+        fmt.Printf("Commit: %s\n", buildCommit)
+        os.Exit(0)
+    }
 
 	if *helpFlag {
 		fmt.Println("GophKeeper - безопасное хранение данных")
