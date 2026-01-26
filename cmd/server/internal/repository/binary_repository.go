@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"gophkeeper/internal/config"
 	"gophkeeper/internal/domain"
+	"log"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -38,7 +39,13 @@ func (r *BinaryRepo) Create(ctx context.Context, userID string, metadata string)
 	if err != nil {
 		return 0, "", err
 	}
-	defer tx.Rollback()
+	 defer func() {
+		if err := tx.Rollback(); err != nil {
+			if !errors.Is(err, sql.ErrTxDone) {
+				log.Printf("failed to rollback the transaction: %v", err)
+			}
+		}
+	}()
 
 	// Генерируем временный уникальный s3_key (чтобы удовлетворить NOT NULL + UNIQUE при INSERT)
 	tempKey := fmt.Sprintf("pending/%s/%d", userID, time.Now().UnixNano())

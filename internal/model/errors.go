@@ -2,10 +2,6 @@ package model
 
 import "errors"
 
-type ContextKey string
-
-const UserIDKey ContextKey = "user_id"
-
 var (
 	ErrNoUser             = errors.New("no such user")
 	ErrIncorrectPass      = errors.New("incorrect password")

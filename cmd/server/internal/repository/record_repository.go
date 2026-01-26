@@ -100,7 +100,7 @@ func (r *RecordRepo) List(ctx context.Context, userID string, recordType string)
 	}
 
 	if len(infos) == 0 {
-		return nil, model.ErrNoContent
+		return nil, nil
 	}
 
 	return infos, nil

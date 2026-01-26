@@ -105,7 +105,7 @@ func (m *mockDownloadStream) Send(chunk *proto.BinaryChunk) error {
 }
 
 func binaryCtxWithUserID(userID string) context.Context {
-	return context.WithValue(context.Background(), interceptor.UserIDKey{}, userID)
+	return context.WithValue(context.Background(), interceptor.UserIDKey, userID)
 }
 
 func binaryPtrString(s string) *string { return &s }

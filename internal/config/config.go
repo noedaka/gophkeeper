@@ -2,8 +2,6 @@ package config
 
 import (
 	"flag"
-	"fmt"
-	"net"
 
 	"github.com/caarlos0/env/v6"
 )
@@ -26,7 +24,7 @@ type Config struct {
 	MinIOAccessKey string `env:"MINIO_ROOT_USER"`
 	MinIOSecretKey string `env:"MINIO_ROOT_PASSWORD"`
 	MinIOBucket    string `env:"MINIO_BUCKET"`
-	MinIOTLS       bool `env:"MINIO_TLS"`
+	MinIOTLS       bool   `env:"MINIO_TLS"`
 }
 
 func Init() (*Config, error) {
@@ -40,13 +38,4 @@ func Init() (*Config, error) {
 	flag.Parse()
 
 	return cfg, nil
-}
-
-func (cfg *Config) ValidateConfig() error {
-	_, _, err := net.SplitHostPort(cfg.ServerPort)
-	if err != nil {
-		return fmt.Errorf("invalid server address format: %w", err)
-	}
-
-	return nil
 }

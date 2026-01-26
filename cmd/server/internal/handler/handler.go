@@ -30,7 +30,7 @@ func NewHandler(userService service.UserService, recordService service.RecordSer
 }
 
 func getUserIDFromContext(ctx context.Context) (string, bool) {
-	userID, ok := ctx.Value(interceptor.UserIDKey{}).(string)
+	userID, ok := ctx.Value(interceptor.UserIDKey).(string)
 	if !ok || userID == "" {
 		return "", false
 	}

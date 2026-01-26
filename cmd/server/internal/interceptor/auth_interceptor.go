@@ -25,7 +25,9 @@ func NewInterceptor(cfg config.Config) *Interceptor {
 }
 
 // typed key для безопасного хранения userID в context
-type UserIDKey struct{}
+type ContextKey string
+
+const UserIDKey ContextKey = "user_id"
 
 // AuthUnaryInterceptor unary interceptor для авторизации при обычных запросах
 func (i *Interceptor) AuthUnaryInterceptor(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
@@ -43,7 +45,7 @@ func (i *Interceptor) AuthUnaryInterceptor(ctx context.Context, req any, info *g
 		return nil, err
 	}
 
-	newCtx := context.WithValue(ctx, UserIDKey{}, userID)
+	newCtx := context.WithValue(ctx, UserIDKey, userID)
 	return handler(newCtx, req)
 }
 
@@ -54,7 +56,7 @@ func (i *Interceptor) AuthStreamInterceptor(srv interface{}, stream grpc.ServerS
 		return err
 	}
 
-	newCtx := context.WithValue(stream.Context(), UserIDKey{}, userID)
+	newCtx := context.WithValue(stream.Context(), UserIDKey, userID)
 
 	wrappedStream := &authServerStream{
 		ServerStream: stream,

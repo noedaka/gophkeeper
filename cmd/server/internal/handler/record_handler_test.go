@@ -42,7 +42,7 @@ func (m *mockRecordService) Delete(ctx context.Context, id int, userID string) e
 }
 
 func ctxWithUserID(userID string) context.Context {
-	return context.WithValue(context.Background(), interceptor.UserIDKey{}, userID)
+	return context.WithValue(context.Background(), interceptor.UserIDKey, userID)
 }
 
 func TestHandler_StoreRecord(t *testing.T) {
