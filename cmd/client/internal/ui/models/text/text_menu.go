@@ -32,7 +32,7 @@ func NewTextMenuModel(token, userID, login string, grpcClient *grpcclient.GophKe
 		token:     token,
 		userID:    userID,
 		login:     login,
-		crypt: crypt,
+		crypt:     crypt,
 		nav:       nav,
 		menuItems: []string{
 			"Добавить произвольный текст",

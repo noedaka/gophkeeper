@@ -10,6 +10,7 @@ import (
 	"gophkeeper/internal/model"
 )
 
+// RecordRepo структура репозитория записи
 type RecordRepo struct {
 	db *sql.DB
 }

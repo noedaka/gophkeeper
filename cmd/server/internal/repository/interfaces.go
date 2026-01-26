@@ -5,11 +5,13 @@ import (
 	"gophkeeper/internal/domain"
 )
 
+// UserRepository интерфейс для авторизации
 type UserRepository interface {
 	Create(ctx context.Context, user *domain.UserCredentials) (string, error)
 	GetIDByCreds(ctx context.Context, user *domain.UserCredentials) (string, error)
 }
 
+// RecordRepository интерфейс записи
 type RecordRepository interface {
 	Create(ctx context.Context, record *domain.Record) (int, error)
 	Get(ctx context.Context, recordID int, userID string) (*domain.Record, error)
@@ -17,6 +19,7 @@ type RecordRepository interface {
 	Delete(ctx context.Context, recordID int, userID string) error
 }
 
+// BinaryRepository интерфейс бинарной записи
 type BinaryRepository interface {
 	Create(ctx context.Context, userID string, metadata string) (int, string, error)
 	GetKey(ctx context.Context, ID int, userID string) (string, error)

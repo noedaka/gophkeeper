@@ -13,6 +13,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+// BinaryRepo структура репозитория для бинарных файлов
 type BinaryRepo struct {
 	db          *sql.DB
 	minioClient *minio.Client
@@ -33,13 +34,13 @@ func (r *BinaryRepo) generateS3Key(userID string, recordID int) string {
 	return fmt.Sprintf("binary/%s/%d.bin.enc", userID, recordID)
 }
 
-// CreateRecord создаёт запись в БД и возвращает ID + финальный S3 ключ для upload
+// Create создаёт запись для бинарного файла в БД и возвращает ID + финальный S3 ключ для upload
 func (r *BinaryRepo) Create(ctx context.Context, userID string, metadata string) (int, string, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, "", err
 	}
-	 defer func() {
+	defer func() {
 		if err := tx.Rollback(); err != nil {
 			if !errors.Is(err, sql.ErrTxDone) {
 				log.Printf("failed to rollback the transaction: %v", err)
@@ -47,7 +48,6 @@ func (r *BinaryRepo) Create(ctx context.Context, userID string, metadata string)
 		}
 	}()
 
-	// Генерируем временный уникальный s3_key (чтобы удовлетворить NOT NULL + UNIQUE при INSERT)
 	tempKey := fmt.Sprintf("pending/%s/%d", userID, time.Now().UnixNano())
 
 	var id int
@@ -78,6 +78,7 @@ func (r *BinaryRepo) Create(ctx context.Context, userID string, metadata string)
 	return id, s3Key, nil
 }
 
+// GetKey получает s3_key из БД
 func (r *BinaryRepo) GetKey(ctx context.Context, ID int, userID string) (string, error) {
 	var s3Key string
 	err := r.db.QueryRowContext(ctx,

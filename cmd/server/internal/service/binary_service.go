@@ -10,12 +10,14 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
+// BinaryServ структура сервиса для работы с бинарными данными
 type BinaryServ struct {
 	repo        repository.BinaryRepository
 	minioClient *minio.Client
 	cfg         config.Config
 }
 
+// NewBinaryServ создает новый экземпляр BinaryServ
 func NewBinaryServ(repo repository.BinaryRepository, minioClient *minio.Client, cfg config.Config) *BinaryServ {
 	return &BinaryServ{
 		repo:        repo,
@@ -24,6 +26,7 @@ func NewBinaryServ(repo repository.BinaryRepository, minioClient *minio.Client, 
 	}
 }
 
+// Create создаёт запись для бинарного файла и возвращает ID + финальный S3 ключ для upload
 func (s *BinaryServ) Create(ctx context.Context, userID string, metadata string) (int, string, error) {
 	return s.repo.Create(ctx, userID, metadata)
 }
@@ -43,10 +46,12 @@ func (s *BinaryServ) Get(ctx context.Context, s3Key string) (io.ReadCloser, int6
 	return obj, stat.Size, nil
 }
 
+// List возвращает список бинарных записей пользователя
 func (s *BinaryServ) List(ctx context.Context, userID string) ([]domain.BinaryRecord, error) {
 	return s.repo.List(ctx, userID)
 }
 
+// Delete удаляет объект из БД и из хранилища MinIO
 func (s *BinaryServ) Delete(ctx context.Context, recordID int, userID string) error {
 	return s.repo.Delete(ctx, recordID, userID)
 }
@@ -58,6 +63,7 @@ func (s *BinaryServ) Upload(ctx context.Context, s3Key string, reader io.Reader,
 	return err
 }
 
+// GetKey получает s3_key
 func (r *BinaryServ) GetKey(ctx context.Context, ID int, userID string) (string, error) {
 	return r.repo.GetKey(ctx, ID, userID)
 }

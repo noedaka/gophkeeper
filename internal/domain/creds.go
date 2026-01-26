@@ -2,6 +2,7 @@ package domain
 
 import "encoding/json"
 
+// Creds определяет структуру логина/пароля и данных о сервисе
 type Creds struct {
 	ID int `json:"-"`
 
@@ -13,6 +14,7 @@ type Creds struct {
 	UserID int `json:"-"`
 }
 
+// MarshalPlain сериализует только чувствительные поля
 func (c *Creds) MarshalPlain() ([]byte, error) {
 	return json.Marshal(struct {
 		Login       string `json:"login"`
@@ -27,6 +29,7 @@ func (c *Creds) MarshalPlain() ([]byte, error) {
 	})
 }
 
+// UnmarshalPlainCreds заполняет структуру из plaintext json
 func UnmarshalPlainCreds(data []byte) (*Creds, error) {
 	var c Creds
 	err := json.Unmarshal(data, &c)

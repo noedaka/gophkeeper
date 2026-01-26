@@ -78,10 +78,10 @@ func NewGophKeeperClient(serverAddr, caCertFile string) (*GophKeeperClient, erro
 
 // Close закрывает соединение с сервером
 func (c *GophKeeperClient) Close() error {
-    if c.conn != nil {
-        return c.conn.Close()
-    }
-    return nil
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return nil
 }
 
 // SetToken устанавливает токен аутентификации

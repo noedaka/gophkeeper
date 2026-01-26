@@ -7,16 +7,17 @@ import (
 	"io"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 	"gophkeeper/cmd/server/internal/handler"
 	"gophkeeper/cmd/server/internal/interceptor"
 	"gophkeeper/internal/config"
 	"gophkeeper/internal/domain"
 	"gophkeeper/internal/proto"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type mockBinaryService struct {
@@ -63,11 +64,11 @@ type mockUploadStream struct {
 	mock.Mock
 }
 
-func (m *mockUploadStream) SetHeader(md metadata.MD) error { return nil }
+func (m *mockUploadStream) SetHeader(md metadata.MD) error  { return nil }
 func (m *mockUploadStream) SendHeader(md metadata.MD) error { return nil }
-func (m *mockUploadStream) SetTrailer(md metadata.MD) {}
-func (m *mockUploadStream) SendMsg(any) error { return nil }
-func (m *mockUploadStream) RecvMsg(any) error { return nil }
+func (m *mockUploadStream) SetTrailer(md metadata.MD)       {}
+func (m *mockUploadStream) SendMsg(any) error               { return nil }
+func (m *mockUploadStream) RecvMsg(any) error               { return nil }
 
 func (m *mockUploadStream) Context() context.Context {
 	args := m.Called()
@@ -88,11 +89,11 @@ type mockDownloadStream struct {
 	mock.Mock
 }
 
-func (m *mockDownloadStream) SetHeader(md metadata.MD) error { return nil }
+func (m *mockDownloadStream) SetHeader(md metadata.MD) error  { return nil }
 func (m *mockDownloadStream) SendHeader(md metadata.MD) error { return nil }
-func (m *mockDownloadStream) SetTrailer(md metadata.MD) {}
-func (m *mockDownloadStream) SendMsg(any) error { return nil }
-func (m *mockDownloadStream) RecvMsg(any) error { return nil }
+func (m *mockDownloadStream) SetTrailer(md metadata.MD)       {}
+func (m *mockDownloadStream) SendMsg(any) error               { return nil }
+func (m *mockDownloadStream) RecvMsg(any) error               { return nil }
 
 func (m *mockDownloadStream) Context() context.Context {
 	args := m.Called()
@@ -109,17 +110,17 @@ func binaryCtxWithUserID(userID string) context.Context {
 }
 
 func binaryPtrString(s string) *string { return &s }
-func binaryPtrBool(b bool) *bool   { return &b }
-func binaryPtrInt32(i int32) *int32 { return &i }
+func binaryPtrBool(b bool) *bool       { return &b }
+func binaryPtrInt32(i int32) *int32    { return &i }
 
 func TestHandler_UploadBinary(t *testing.T) {
 	tests := []struct {
-		name        string
-		ctx         context.Context
-		setupStream func(*mockUploadStream)
+		name         string
+		ctx          context.Context
+		setupStream  func(*mockUploadStream)
 		setupService func(*mockBinaryService)
-		wantErr     bool
-		wantCode    codes.Code
+		wantErr      bool
+		wantCode     codes.Code
 	}{
 		{
 			name: "success: multiple chunks",
@@ -337,8 +338,8 @@ func TestHandler_ListBinaries(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "unauthenticated",
-			ctx:  context.Background(),
+			name:         "unauthenticated",
+			ctx:          context.Background(),
 			setupService: func(svc *mockBinaryService) {},
 			wantErr:      true,
 			wantCode:     codes.Unauthenticated,
@@ -389,9 +390,9 @@ func TestHandler_DeleteBinary(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "unauthenticated",
-			ctx:  context.Background(),
-			req:  proto.BinaryRecordID_builder{}.Build(),
+			name:         "unauthenticated",
+			ctx:          context.Background(),
+			req:          proto.BinaryRecordID_builder{}.Build(),
 			setupService: func(svc *mockBinaryService) {},
 			wantErr:      true,
 			wantCode:     codes.Unauthenticated,

@@ -12,77 +12,77 @@ import (
 
 // UploadBinary осуществляет потоковую загрузку файла по чанкам
 func (h *Handler) UploadBinary(stream proto.BinaryStorage_UploadBinaryServer) error {
-    ctx := stream.Context()
-    userID, ok := getUserIDFromContext(ctx)
-    if !ok {
-        return status.Errorf(codes.Unauthenticated, "unauthenticated")
-    }
+	ctx := stream.Context()
+	userID, ok := getUserIDFromContext(ctx)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated, "unauthenticated")
+	}
 
-    var metadata string
-    var recordID int
-    var s3Key string
-    var firstChunk = true
+	var metadata string
+	var recordID int
+	var s3Key string
+	var firstChunk = true
 
-    reader, writer := io.Pipe()
-    uploadErrChan := make(chan error, 1)
-    var uploadStarted bool
+	reader, writer := io.Pipe()
+	uploadErrChan := make(chan error, 1)
+	var uploadStarted bool
 
-    for {
-        chunk, err := stream.Recv()
-        if err != nil {
-            if err != io.EOF {
-                writer.CloseWithError(err)
-            }
-            break
-        }
+	for {
+		chunk, err := stream.Recv()
+		if err != nil {
+			if err != io.EOF {
+				writer.CloseWithError(err)
+			}
+			break
+		}
 
-        if firstChunk {
-            if chunk.GetMetadata() == "" {
-                writer.CloseWithError(errors.New("metadata required in first chunk"))
-                return status.Errorf(codes.InvalidArgument, "metadata required in first chunk")
-            }
-            metadata = chunk.GetMetadata()
-            var createErr error
-            recordID, s3Key, createErr = h.BinaryService.Create(ctx, userID, metadata)
-            if createErr != nil {
-                writer.CloseWithError(createErr)
-                return status.Errorf(codes.Internal, "failed to create record: %v", createErr)
-            }
+		if firstChunk {
+			if chunk.GetMetadata() == "" {
+				writer.CloseWithError(errors.New("metadata required in first chunk"))
+				return status.Errorf(codes.InvalidArgument, "metadata required in first chunk")
+			}
+			metadata = chunk.GetMetadata()
+			var createErr error
+			recordID, s3Key, createErr = h.BinaryService.Create(ctx, userID, metadata)
+			if createErr != nil {
+				writer.CloseWithError(createErr)
+				return status.Errorf(codes.Internal, "failed to create record: %v", createErr)
+			}
 
-            go func() {
-                uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1)
-            }()
-            uploadStarted = true
-            firstChunk = false
-        }
+			go func() {
+				uploadErrChan <- h.BinaryService.Upload(ctx, s3Key, reader, -1)
+			}()
+			uploadStarted = true
+			firstChunk = false
+		}
 
-        if _, writeErr := writer.Write(chunk.GetData()); writeErr != nil {
-            writer.CloseWithError(writeErr)
-            break
-        }
+		if _, writeErr := writer.Write(chunk.GetData()); writeErr != nil {
+			writer.CloseWithError(writeErr)
+			break
+		}
 
-    }
+	}
 
-    if uploadStarted {
-        writer.Close() 
-    } else if !uploadStarted {
-        writer.CloseWithError(errors.New("no chunks received"))
-    }
+	if uploadStarted {
+		writer.Close()
+	} else if !uploadStarted {
+		writer.CloseWithError(errors.New("no chunks received"))
+	}
 
-    if uploadStarted {
-        if uploadErr := <-uploadErrChan; uploadErr != nil {
-            _ = h.BinaryService.Delete(ctx, recordID, userID)
-            return status.Errorf(codes.Internal, "MinIO upload failed: %v", uploadErr)
-        }
-    } else {
-        return status.Errorf(codes.InvalidArgument, "no data received")
-    }
+	if uploadStarted {
+		if uploadErr := <-uploadErrChan; uploadErr != nil {
+			_ = h.BinaryService.Delete(ctx, recordID, userID)
+			return status.Errorf(codes.Internal, "MinIO upload failed: %v", uploadErr)
+		}
+	} else {
+		return status.Errorf(codes.InvalidArgument, "no data received")
+	}
 
-    i32ID := int32(recordID)
-    response := proto.BinaryRecordID_builder{
-        Id: &i32ID,
-    }
-    return stream.SendAndClose(response.Build())
+	i32ID := int32(recordID)
+	response := proto.BinaryRecordID_builder{
+		Id: &i32ID,
+	}
+	return stream.SendAndClose(response.Build())
 }
 
 // DownloadBinary потоковая выгрузка файла по чанкам

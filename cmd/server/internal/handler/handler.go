@@ -8,6 +8,7 @@ import (
 	"gophkeeper/internal/proto"
 )
 
+// Handler определяет структуру хэндлера с используемыми сервисами и config
 type Handler struct {
 	proto.UnimplementedAuthServiceServer
 	proto.UnimplementedSecureStorageServer
@@ -20,6 +21,7 @@ type Handler struct {
 	cfg *config.Config
 }
 
+// NewHandler создает новый экземпляр Handler
 func NewHandler(userService service.UserService, recordService service.RecordService, binaryService service.BinaryService, cfg *config.Config) *Handler {
 	return &Handler{
 		UserService:   userService,
@@ -29,6 +31,7 @@ func NewHandler(userService service.UserService, recordService service.RecordSer
 	}
 }
 
+// getUserIDFromContext получает user_id из контекста
 func getUserIDFromContext(ctx context.Context) (string, bool) {
 	userID, ok := ctx.Value(interceptor.UserIDKey).(string)
 	if !ok || userID == "" {

@@ -10,10 +10,12 @@ import (
 	"log"
 )
 
+// UserRepo структура репозитория пользователя
 type UserRepo struct {
 	db *sql.DB
 }
 
+// NewUserRepo создает новый UserRepo
 func NewUserRepo(db *sql.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
@@ -82,6 +84,7 @@ func (repo *UserRepo) GetIDByCreds(ctx context.Context, user *domain.UserCredent
 	return "", model.ErrIncorrectPass
 }
 
+// IsLoginFree проверяет свободен ли login
 func (repo *UserRepo) isLoginFree(ctx context.Context, login string) error {
 	var count int
 	err := repo.db.QueryRowContext(ctx,

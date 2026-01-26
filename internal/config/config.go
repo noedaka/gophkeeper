@@ -6,6 +6,7 @@ import (
 	"github.com/caarlos0/env/v6"
 )
 
+// Config определяет переменные окружения
 type Config struct {
 	ServerPort        string `env:"SERVER_PORT"`
 	GRPCServerAddress string `env:"GRPC_SERVER_ADDRESS"`
@@ -27,6 +28,7 @@ type Config struct {
 	MinIOTLS       bool   `env:"MINIO_TLS"`
 }
 
+// Init инициализирует переменные окружения
 func Init() (*Config, error) {
 	cfg := &Config{}
 

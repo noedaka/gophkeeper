@@ -66,15 +66,18 @@ func (i *Interceptor) AuthStreamInterceptor(srv interface{}, stream grpc.ServerS
 	return handler(srv, wrappedStream)
 }
 
+// authServerStream структура потокового interceptor
 type authServerStream struct {
 	grpc.ServerStream
 	ctx context.Context
 }
 
+// Context возвращает контекст из authServerStream
 func (s *authServerStream) Context() context.Context {
 	return s.ctx
 }
 
+// authenticate производит валидацию токена
 func (i *Interceptor) authenticate(ctx context.Context) (string, error) {
 	tokenString, err := i.extractTokenFromContext(ctx)
 	if err != nil {

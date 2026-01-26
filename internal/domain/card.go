@@ -2,6 +2,7 @@ package domain
 
 import "encoding/json"
 
+// Card определяет структуру дебитовой карты
 type Card struct {
 	ID int `json:"-"`
 
@@ -14,7 +15,7 @@ type Card struct {
 	UserID int `json:"-"`
 }
 
-// MarshalPlain — сериализует только чувствительные поля
+// MarshalPlain сериализует только чувствительные поля
 func (c *Card) MarshalPlain() ([]byte, error) {
 	return json.Marshal(struct {
 		CardNumber     string `json:"card_number"`
@@ -31,7 +32,7 @@ func (c *Card) MarshalPlain() ([]byte, error) {
 	})
 }
 
-// UnmarshalPlain — заполняет структуру из plaintext json
+// UnmarshalPlainCard заполняет структуру из plaintext json
 func UnmarshalPlainCard(data []byte) (*Card, error) {
 	var c Card
 	err := json.Unmarshal(data, &c)

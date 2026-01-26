@@ -93,7 +93,7 @@ func (m AddTextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.UpdateSize(msg)
 	case TextAddedMsg:
-		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient,m.crypt, m.nav)
+		textMenuModel := NewTextMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
 		textMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
 		return textMenuModel, textMenuModel.Init()
 	case message.ErrorMsg:

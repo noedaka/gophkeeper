@@ -9,9 +9,9 @@ import (
 )
 
 var (
-    buildVersion = "N/A"
-    buildDate    = "N/A"
-    buildCommit  = "N/A"
+	buildVersion = "N/A"
+	buildDate    = "N/A"
+	buildCommit  = "N/A"
 )
 
 func main() {
@@ -19,13 +19,13 @@ func main() {
 	helpFlag := flag.Bool("help", false, "Показать справку")
 
 	flag.Parse()
-    if *versionFlag {
-        fmt.Printf("GophKeeper Client\n")
-        fmt.Printf("Version: %s\n", buildVersion)
-        fmt.Printf("Build date: %s\n", buildDate)
-        fmt.Printf("Commit: %s\n", buildCommit)
-        os.Exit(0)
-    }
+	if *versionFlag {
+		fmt.Printf("GophKeeper Client\n")
+		fmt.Printf("Version: %s\n", buildVersion)
+		fmt.Printf("Build date: %s\n", buildDate)
+		fmt.Printf("Commit: %s\n", buildCommit)
+		os.Exit(0)
+	}
 
 	if *helpFlag {
 		fmt.Println("GophKeeper - безопасное хранение данных")
