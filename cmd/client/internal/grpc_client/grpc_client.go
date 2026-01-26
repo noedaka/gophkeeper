@@ -2,12 +2,18 @@ package grpcclient
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"gophkeeper/internal/proto"
-	pb "gophkeeper/internal/proto"
+	"net"
+	"os"
 	"sync"
 
+	"gophkeeper/internal/proto"
+	pb "gophkeeper/internal/proto"
+
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 )
@@ -23,22 +29,48 @@ type GophKeeperClient struct {
 }
 
 // NewGophKeeperClient создаёт нового клиента
-func NewGophKeeperClient(serverAddr string) (*GophKeeperClient, error) {
-	conn, err := grpc.NewClient(serverAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+func NewGophKeeperClient(serverAddr, caCertFile string) (*GophKeeperClient, error) {
+	var creds credentials.TransportCredentials
+
+	if caCertFile == "" {
+		creds = insecure.NewCredentials()
+	} else {
+		caCert, err := os.ReadFile(caCertFile)
+		if err != nil {
+			return nil, fmt.Errorf("не удалось прочитать CA сертификат: %w", err)
+		}
+
+		caPool := x509.NewCertPool()
+		if !caPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("не удалось добавить CA сертификат в пул")
+		}
+
+		host, _, splitErr := net.SplitHostPort(serverAddr)
+		if splitErr != nil {
+			host = serverAddr
+		}
+
+		tlsConfig := &tls.Config{
+			RootCAs:    caPool,
+			ServerName: host,
+		}
+
+		creds = credentials.NewTLS(tlsConfig)
+	}
+
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
 	}
 
 	authClient := pb.NewAuthServiceClient(conn)
-	cardClient := pb.NewSecureStorageClient(conn)
+	storageClient := pb.NewSecureStorageClient(conn)
 	binaryClient := pb.NewBinaryStorageClient(conn)
 
 	return &GophKeeperClient{
 		conn:          conn,
 		authClient:    authClient,
-		storageClient: cardClient,
+		storageClient: storageClient,
 		binaryClient:  binaryClient,
 		token:         "",
 	}, nil

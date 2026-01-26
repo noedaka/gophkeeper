@@ -20,6 +20,7 @@ type Config struct {
 	DBSSLMode  string `env:"DB_SSLMODE"`
 
 	JWTSecret string `env:"JWT_SECRET"`
+	CACrtFile string `env:"CA_CRT_FILE"`
 
 	MinIOEndpoint  string `env:"MINIO_ENDPOINT"`
 	MinIOAccessKey string `env:"MINIO_ROOT_USER"`

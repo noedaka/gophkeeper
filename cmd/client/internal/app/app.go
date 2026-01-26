@@ -24,7 +24,7 @@ func NewApp() *App {
 	}
 
 	// Подключаемся к серверу
-	grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress)
+	grpcClient, err := grpcclient.NewGophKeeperClient(cfg.GRPCServerAddress, cfg.CACrtFile)
 	if err != nil {
 		log.Printf("Ошибка подключения к серверу: %v", err)
 	}
