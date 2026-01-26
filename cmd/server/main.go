@@ -136,7 +136,7 @@ func initDatabase(cfg *config.Config) (*sql.DB, error) {
 func initMinIO(cfg *config.Config) (*minio.Client, error) {
 	minioClient, err := minio.New(cfg.MinIOEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.MinIOAccessKey, cfg.MinIOSecretKey, ""),
-		Secure: false,
+		Secure: cfg.MinIOTLS,
 	})
 	if err != nil {
 		return nil, err

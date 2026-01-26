@@ -26,6 +26,7 @@ type Config struct {
 	MinIOAccessKey string `env:"MINIO_ROOT_USER"`
 	MinIOSecretKey string `env:"MINIO_ROOT_PASSWORD"`
 	MinIOBucket    string `env:"MINIO_BUCKET"`
+	MinIOTLS       bool `env:"MINIO_TLS"`
 }
 
 func Init() (*Config, error) {
