@@ -1,0 +1,264 @@
+package creds
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+
+	"gophkeeper/cmd/client/internal/crypto"
+	grpcclient "gophkeeper/cmd/client/internal/grpc_client"
+	"gophkeeper/cmd/client/internal/ui/components"
+	"gophkeeper/cmd/client/internal/ui/models/base"
+	message "gophkeeper/cmd/client/internal/ui/models/messages"
+	"gophkeeper/cmd/client/internal/ui/navigation"
+	"gophkeeper/cmd/client/internal/ui/styles"
+	"gophkeeper/internal/domain"
+	"gophkeeper/internal/proto"
+
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// AddCredsModel управляет формой добавления логина/пароля
+type AddCredsModel struct {
+	base.BaseModel
+	token      string
+	userID     string
+	login      string
+	grpcClient *grpcclient.GophKeeperClient
+
+	crypt *crypto.Crypt
+	nav   navigation.Navigator
+
+	username components.InputField
+	password components.InputField
+	service  components.InputField
+	metadata components.InputField
+
+	cursorPos int
+	submitBtn string
+}
+
+type CredsAddedMsg struct {
+	CredID int32
+}
+
+// NewCredsMenuModel создаёт новую модель формы добавления логинов/паролей
+func NewAddCredsModel(token, userID, login string, grpcClient *grpcclient.GophKeeperClient, crypt *crypto.Crypt, nav navigation.Navigator) AddCredsModel {
+	m := AddCredsModel{
+		BaseModel:  base.NewBaseModel(),
+		token:      token,
+		userID:     userID,
+		login:      login,
+		grpcClient: grpcClient,
+
+		crypt: crypt,
+		nav:   nav,
+
+		username: components.NewInput("Логин/Email", false),
+		password: components.NewInput("Пароль", true),
+		service:  components.NewInput("Сервис/Сайт", false),
+		metadata: components.NewInput("Метка/Название", false),
+
+		cursorPos: 0,
+		submitBtn: "Сохранить запись",
+	}
+
+	m.username, _ = m.username.Focus()
+
+	return m
+}
+
+// Init инициализирует модель
+func (m AddCredsModel) Init() tea.Cmd {
+	return nil
+}
+
+// Update обрабатывает сообщения
+func (m AddCredsModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q":
+			m.Cancel()
+			return m, tea.Quit
+		case "tab":
+			m = m.moveCursor(false)
+		case "shift+tab":
+			m = m.moveCursor(true)
+		case "enter":
+			if m.cursorPos == 4 {
+				return m, m.submit()
+			}
+			m = m.moveCursor(false)
+		case "esc":
+			credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
+			return credsMenuModel, credsMenuModel.Init()
+		}
+	case tea.WindowSizeMsg:
+		m.UpdateSize(msg)
+	case CredsAddedMsg:
+		credsMenuModel := NewCredsMenuModel(m.token, m.userID, m.login, m.grpcClient, m.crypt, m.nav)
+		credsMenuModel.SetError(fmt.Sprintf("Запись успешно добавлена (ID: %d)", msg.CredID))
+		return credsMenuModel, credsMenuModel.Init()
+	case message.ErrorMsg:
+		m.SetError(msg.Error)
+	}
+
+	var cmd tea.Cmd
+	m.username, cmd = m.username.Update(msg)
+	cmds = append(cmds, cmd)
+	m.password, cmd = m.password.Update(msg)
+	cmds = append(cmds, cmd)
+	m.service, cmd = m.service.Update(msg)
+	cmds = append(cmds, cmd)
+	m.metadata, cmd = m.metadata.Update(msg)
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+// View отображает интерфейс
+func (m AddCredsModel) View() string {
+	title := styles.TitleStyle.Render("Добавить логин/пароль")
+
+	form := lipgloss.JoinVertical(lipgloss.Left,
+		m.renderField("Логин/Email:", m.username.View(), 0),
+		m.renderField("Пароль:", m.password.View(), 1),
+		m.renderField("Сервис/Сайт:", m.service.View(), 2),
+		m.renderField("Метка/Название:", m.metadata.View(), 3),
+	)
+	form = lipgloss.NewStyle().Width(40).Render(form)
+
+	submitBtnView := styles.ButtonActiveStyle.Render(m.submitBtn)
+
+	content := lipgloss.JoinVertical(lipgloss.Center,
+		title,
+		"",
+		form,
+		"",
+		submitBtnView,
+		m.RenderError(),
+		m.RenderLoading(),
+		"",
+		styles.HelpStyle.Render("Tab/Shift+Tab: перемещение • Enter: подтвердить • Esc: назад"),
+	)
+
+	return m.Center(content)
+}
+
+func (m AddCredsModel) renderField(label string, fieldView string, index int) string {
+	if m.cursorPos == index {
+		label = "-> " + label
+	}
+	return lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.NewStyle().MarginBottom(1).Render(label),
+		fieldView,
+		"",
+	)
+}
+
+func (m AddCredsModel) moveCursor(backward bool) AddCredsModel {
+	m = m.blurAll()
+
+	if backward {
+		m.cursorPos--
+		if m.cursorPos < 0 {
+			m.cursorPos = 4
+		}
+	} else {
+		m.cursorPos++
+		if m.cursorPos > 4 {
+			m.cursorPos = 0
+		}
+	}
+
+	if m.cursorPos < 4 {
+		switch m.cursorPos {
+		case 0:
+			m.username, _ = m.username.Focus()
+		case 1:
+			m.password, _ = m.password.Focus()
+		case 2:
+			m.service, _ = m.service.Focus()
+		case 3:
+			m.metadata, _ = m.metadata.Focus()
+		}
+	}
+
+	if m.cursorPos == 4 {
+		m.submitBtn = "-> Сохранить запись"
+	} else {
+		m.submitBtn = "Сохранить запись"
+	}
+
+	return m
+}
+
+func (m AddCredsModel) blurAll() AddCredsModel {
+	m.username = m.username.Blur()
+	m.password = m.password.Blur()
+	m.service = m.service.Blur()
+	m.metadata = m.metadata.Blur()
+	return m
+}
+
+func (m AddCredsModel) submit() tea.Cmd {
+	if err := m.validate(); err != nil {
+		return func() tea.Msg {
+			return message.ErrorMsg{Error: err.Error()}
+		}
+	}
+
+	plainCreds := &domain.Creds{
+		Login:       m.username.Model.Value(),
+		Password:    m.password.Model.Value(),
+		ServiceName: m.service.Model.Value(),
+		Metadata:    m.metadata.Model.Value(),
+	}
+
+	plainBytes, err := plainCreds.MarshalPlain()
+	if err != nil {
+		return func() tea.Msg {
+			return message.ErrorMsg{Error: fmt.Sprintf("marshal error: %v", err)}
+		}
+	}
+
+	encrypted, nonce, err := m.crypt.Encrypt(plainBytes)
+	if err != nil {
+		return func() tea.Msg {
+			return message.ErrorMsg{Error: fmt.Sprintf("encryption error: %v", err)}
+		}
+	}
+
+	credsName := "creds"
+	rec := proto.EncryptedRecord_builder{
+		Ciphertext: encrypted,
+		Nonce:      nonce,
+		Metadata:   &plainCreds.Metadata,
+		RecordType: &credsName,
+	}
+
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		credID, err := m.grpcClient.StoreRecord(ctx, rec.Build())
+		if err != nil {
+			return message.ErrorMsg{Error: fmt.Sprintf("Ошибка сохранения: %v", err)}
+		}
+		return CredsAddedMsg{CredID: credID}
+	}
+}
+
+func (m AddCredsModel) validate() error {
+	if strings.TrimSpace(m.username.Model.Value()) == "" {
+		return fmt.Errorf("Укажите логин/email")
+	}
+	if strings.TrimSpace(m.password.Model.Value()) == "" {
+		return fmt.Errorf("Укажите пароль")
+	}
+	return nil
+}
